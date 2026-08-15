@@ -1,0 +1,23 @@
+{
+  "image_quality": "good",
+  "house_detected": true,
+  "rejection_reason": null,
+  "floors": 2,
+  "regions_present": [
+    "main_wall",
+    "accent_wall",
+    "pillar",
+    "balcony",
+    "railing",
+    "roof",
+    "boundary_wall"
+  ],
+  "protected_regions": [
+    "window",
+    "door",
+    "sky",
+    "trees"
+  ],
+  "confidence": 0.98,
+  "notes": "Modern two-story villa with a flat roof, glass balcony railings, and a mix of smooth and textured stone exterior finishes."
+}

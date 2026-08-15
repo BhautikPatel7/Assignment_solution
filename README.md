@@ -1,2 +1,4 @@
-# Assignment_solution
-Assessment for the practical 
+Read
+SETUP_SEGMENTATION.md
+
+first to install requirenment.

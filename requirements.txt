@@ -1,0 +1,14 @@
+# GCP API / AI Studio dependencies (Module 1)
+google-auth==2.56.3
+requests==2.34.2
+
+# Segmentation dependencies (Module 2)
+# Instruct pip to find the PyTorch CUDA 12.4 packages
+--extra-index-url https://download.pytorch.org/whl/cu124
+
+torch==2.6.0+cu124
+torchvision==0.21.0+cu124
+ultralytics==8.4.120
+opencv-python==5.0.0.93
+pillow==12.3.0
+numpy==2.5.2
