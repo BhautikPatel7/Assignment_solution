@@ -13,8 +13,8 @@ import torch
 from PIL import Image
 
 # -- CONFIG ----------------------------------------------------------------
-TEST_IMAGE  = "data/old_weathered_house.png"
-# TEST_IMAGE  = "data/image_1.png"
+# TEST_IMAGE  = "data/old_weathered_house.png"
+TEST_IMAGE  = "data/image_1.png"
 # TEST_IMAGE  = "data/image_2.png"
 OUTPUT_DIR  = "test_masks"
 
@@ -28,15 +28,13 @@ ADE20K_TO_REGION = {
     18:  "window",          # curtain (visible through windows)
     25:  "main_wall",       # house
     32:  "boundary_wall",   # fence
-    38:  "railing",         # railing / balustrade
     42:  "pillar",          # column / pillar
 }
 
 # YOLO classes and mapping
-YOLO_CLASSES = ["wall", "roof", "pillar", "balcony", "railing", "fence", "window", "door"]
+YOLO_CLASSES = ["wall", "roof", "pillar", "balcony", "fence", "window", "door"]
 YOLO_TO_REGION = {
     "wall":    None,           # SegFormer handles this
-    "railing": None,           # SegFormer handles this
     "roof":    "roof",
     "pillar":  "pillar",
     "balcony": "balcony",
@@ -48,7 +46,7 @@ YOLO_CONF = 0.03
 
 # Max allowed area (fraction of image) per YOLO-detected region
 MAX_AREA_FRACTION = {
-    "roof":          0.05,
+    "roof":          0.10,
     "pillar":        0.05,
     "balcony":       0.15,
     "boundary_wall": 0.20,
@@ -56,17 +54,26 @@ MAX_AREA_FRACTION = {
     "door":          0.10,
 }
 
-# Max allowed YOLO bounding box area (fraction of image)
-MAX_BOX_FRACTION = 0.35
+# Max allowed YOLO bounding box area (per region)
+# Roof boxes must be thin strips, not giant rectangles
+MAX_BOX_FRACTION = {
+    "roof":          0.10,
+    "pillar":        0.10,
+    "balcony":       0.20,
+    "boundary_wall": 0.25,
+    "window":        0.15,
+    "door":          0.15,
+}
+DEFAULT_MAX_BOX_FRACTION = 0.35
 
 # Mask priority (higher number = higher priority, wins conflicts)
+# Roof must override main_wall so it's visible, but clipped boxes keep it small
 MASK_PRIORITY = {
     "main_wall":     1,
-    "balcony":       2,
-    "roof":          3,
+    "roof":          2,   # Above wall so roof strip appears
+    "balcony":       3,
     "boundary_wall": 4,
-    "railing":       5,
-    "pillar":        6,
+    "pillar":        5,
     "window":        7,   # Protected: carves hole in wall
     "door":          8,   # Protected: carves hole in wall
 }
@@ -80,11 +87,10 @@ COLORS = {
     "main_wall":     (255,  80,  80),
     "pillar":        ( 80,  80, 255),
     "balcony":       (255, 200,  50),
-    "railing":       (200,  50, 200),
     "roof":          ( 50, 200, 200),
     "boundary_wall": (200, 150,  50),
     "window":        (100, 200, 100),
-    "door":          (150, 100,  50),
+    "door":          (255, 140,   0),
 }
 
 # Minimum mask area to keep (pixels) -- removes tiny noise patches
@@ -220,9 +226,17 @@ for box in boxes:
 
     box_area = (xyxy[2] - xyxy[0]) * (xyxy[3] - xyxy[1])
     box_frac = box_area / total_pixels
-    if box_frac > MAX_BOX_FRACTION:
-        print(f"      SKIP {region_id:20s}  conf={conf:.2f}  box={xyxy}  (too large: {box_frac:.1%})")
-        continue
+    max_box = MAX_BOX_FRACTION.get(region_id, DEFAULT_MAX_BOX_FRACTION)
+    if box_frac > max_box:
+        if region_id == "roof":
+            # Smart clip: roof is at the TOP of the box, so keep only top 25%
+            box_h = xyxy[3] - xyxy[1]
+            xyxy[3] = xyxy[1] + int(box_h * 0.25)
+            new_frac = (xyxy[2] - xyxy[0]) * (xyxy[3] - xyxy[1]) / total_pixels
+            print(f"      CLIP roof  box clipped to top 25% -> {xyxy}  ({new_frac:.1%})")
+        else:
+            print(f"      SKIP {region_id:20s}  conf={conf:.2f}  box={xyxy}  (too large: {box_frac:.1%} > {max_box:.0%})")
+            continue
 
     print(f"      YOLO -> {region_id:20s}  conf={conf:.2f}  box={xyxy}  ({box_frac:.1%})")
     if region_id not in yolo_regions:
@@ -265,16 +279,28 @@ else:
 
 print(f"\n  [4] Post-processing: cleanup + conflict resolution...")
 
-kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+# Thin structures (pillar, railing) need gentler cleanup
+THIN_REGIONS = {"pillar"}
+kernel_large = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+kernel_small = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+
 for rid in list(region_masks.keys()):
     mask = region_masks[rid].astype(np.uint8) * 255
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel, iterations=2)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel, iterations=1)
+
+    if rid in THIN_REGIONS:
+        # Gentle cleanup for thin structures -- only close gaps, no opening
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel_small, iterations=3)
+        min_area = 200
+    else:
+        # Standard cleanup for large regions
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel_large, iterations=2)
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel_large, iterations=1)
+        min_area = MIN_MASK_PIXELS
 
     num_labels, labels, stats, _ = cv2.connectedComponentsWithStats(mask, connectivity=8)
     clean_mask = np.zeros_like(mask)
     for i in range(1, num_labels):
-        if stats[i, cv2.CC_STAT_AREA] >= MIN_MASK_PIXELS:
+        if stats[i, cv2.CC_STAT_AREA] >= min_area:
             clean_mask[labels == i] = 255
 
     region_masks[rid] = clean_mask > 127

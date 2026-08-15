@@ -1,76 +1,88 @@
 {
-  "image": "data/old_weathered_house.png",
+  "image": "data/image_1.png",
   "regions": [
     {
       "region_id": "door",
-      "pixel_count": 57973,
-      "coverage_pct": 1.3,
+      "pixel_count": 88129,
+      "coverage_pct": 2.0,
       "mask_path": "test_masks\\door.png",
       "box_pixels": [
-        1579,
-        920,
-        2610,
-        1357
+        487,
+        904,
+        1582,
+        1400
       ]
     },
     {
       "region_id": "window",
-      "pixel_count": 194555,
-      "coverage_pct": 4.5,
+      "pixel_count": 257520,
+      "coverage_pct": 6.0,
       "mask_path": "test_masks\\window.png",
       "box_pixels": [
-        738,
-        455,
-        1879,
-        1092
+        0,
+        449,
+        2740,
+        1152
       ]
     },
     {
       "region_id": "pillar",
-      "pixel_count": 84804,
-      "coverage_pct": 2.0,
+      "pixel_count": 57951,
+      "coverage_pct": 1.3,
       "mask_path": "test_masks\\pillar.png",
       "box_pixels": [
-        1528,
-        407,
-        2364,
-        1392
+        612,
+        509,
+        1200,
+        1249
       ]
     },
     {
       "region_id": "boundary_wall",
-      "pixel_count": 170453,
-      "coverage_pct": 3.9,
+      "pixel_count": 217925,
+      "coverage_pct": 5.0,
       "mask_path": "test_masks\\boundary_wall.png",
       "box_pixels": [
-        1794,
-        1064,
-        2729,
-        1397
+        146,
+        927,
+        2745,
+        1407
       ]
     },
     {
       "region_id": "balcony",
-      "pixel_count": 62691,
-      "coverage_pct": 1.4,
+      "pixel_count": 151049,
+      "coverage_pct": 3.5,
       "mask_path": "test_masks\\balcony.png",
       "box_pixels": [
-        676,
-        85,
-        1886,
-        685
+        0,
+        145,
+        2815,
+        1090
+      ]
+    },
+    {
+      "region_id": "roof",
+      "pixel_count": 104330,
+      "coverage_pct": 2.4,
+      "mask_path": "test_masks\\roof.png",
+      "box_pixels": [
+        0,
+        185,
+        2044,
+        655
       ]
     },
     {
       "region_id": "main_wall",
-      "pixel_count": 1801457,
-      "coverage_pct": 41.6,
+      "pixel_count": 1560697,
+      "coverage_pct": 36.1,
       "mask_path": "test_masks\\main_wall.png",
       "box_pixels": [
-        40,
-        83,
-        2740,
-        1398
+        0,
+        181,
+        2815,
+        1496
       ]
     }
   ]

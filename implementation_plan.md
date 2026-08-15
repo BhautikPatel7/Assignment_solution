@@ -1,114 +1,89 @@
-# AI-Based Exterior House Renovation & Cost Estimation System
-## Full Implementation Plan — Prototype
+# E2M — Full Detailed Implementation Plan
+## AI-Based Exterior House Renovation & Cost Estimation System
 
 ---
 
-## Overview
+## System Summary
 
-A full-stack web application that lets users upload a house exterior photo, segment architectural regions using Gemini (Vertex AI), apply materials, get a photorealistic AI-generated renovation preview, and download a PDF cost report.
-
-**Stack**: FastAPI (Python) + React (Vite) + Gemini API (Vertex AI)  
-**Hosting**: Render (backend) + Vercel (frontend)  
-**Storage**: No DB — stateless, in-memory/temp processing  
-
----
-
-## Prototype Scope (Controlled)
-
-### Segments (MVP — 8 regions)
-| ID | Region |
-|----|--------|
-| `main_wall` | Main exterior wall |
-| `accent_wall` | Lower / secondary wall |
-| `pillar` | Pillars / columns |
-| `balcony` | Balcony slab/wall |
-| `railing` | Balcony / staircase railing |
-| `roof` | Roof / roof edge |
-| `boundary_wall` | Compound / boundary wall |
-| `window` | Windows (protected, not editable) |
-| `door` | Doors (protected, not editable) |
-
-### Materials Per Region (Limited Options)
-| Region | Material Options |
-|--------|----------------|
-| main_wall | Paint (5 colors), Stone Cladding (3 types), Texture Finish (2 types) |
-| accent_wall | Paint (5 colors), Tile (3 types), Stone Cladding (2 types) |
-| pillar | Paint (5 colors), Texture Finish (2 types), Stone Cladding (2 types) |
-| balcony | Paint (5 colors), Tile (2 types) |
-| railing | Glass Railing, Black Metal, Stainless Steel |
-| roof | Tile Roofing (2 types), Flat Concrete |
-| boundary_wall | Paint (5 colors), Stone Cladding (2 types) |
+| Item | Detail |
+|------|--------|
+| **Backend** | FastAPI (Python 3.13) |
+| **Frontend** | React + Vite |
+| **Segmentation** | SegFormer-b4 + YOLOv8s-worldv2 + SAM2-b |
+| **AI Analysis** | Gemini 3.1 Pro (Vertex AI) |
+| **AI Visualization** | Gemini 2.0 Flash / Imagen 3 (Vertex AI) |
+| **Compositing** | OpenCV + NumPy |
+| **PDF** | ReportLab |
+| **Hosting** | Render (backend) + Vercel (frontend) |
+| **Storage** | Stateless — temp files only |
 
 ---
 
-## System Architecture
+## Models Used
 
-```
-Frontend (React/Vite)          Backend (FastAPI)
-        │                              │
-        │  POST /api/analyze           │
-        │ ──────────────────────────►  │  ── Gemini Vision (M1)
-        │                              │
-        │  POST /api/segment           │
-        │ ──────────────────────────►  │  ── Gemini Segmentation (M2)
-        │                              │
-        │  POST /api/composite         │
-        │ ──────────────────────────►  │  ── OpenCV Compositing (M4)
-        │                              │
-        │  POST /api/visualize         │
-        │ ──────────────────────────►  │  ── Gemini Imagen (M5)
-        │                              │
-        │  POST /api/estimate          │
-        │ ──────────────────────────►  │  ── Python Logic (M6)
-        │                              │
-        │  POST /api/report            │
-        │ ──────────────────────────►  │  ── ReportLab PDF (M7)
-        │                              │
-```
+| Model | Purpose | Size | Source |
+|-------|---------|------|--------|
+| `nvidia/segformer-b4-finetuned-ade-512-512` | Pixel-level semantic segmentation (wall, window, door, pillar) | ~60MB | HuggingFace (transformers) |
+| `yolov8s-worldv2.pt` | Open-vocabulary object detection (roof, balcony, fence) | ~26MB | Ultralytics |
+| `sam2_b.pt` | High-quality mask refinement from bounding boxes | ~162MB | Ultralytics (Meta SAM2) |
+| `gemini-3.1-pro-preview` | Image validation + architectural analysis (M1) | Cloud API | Google Vertex AI |
+| `gemini-2.0-flash-exp` | Photorealistic renovation visualization (M5) | Cloud API | Google Vertex AI |
 
 ---
 
-## Proposed File Structure
+## Segmented Regions (7 total)
 
-### Backend
+| Region ID | Detected By | Editable | Color (RGB) |
+|-----------|-------------|----------|-------------|
+| `main_wall` | SegFormer (ADE20K classes: wall, building, house) | ✅ Yes | (255, 80, 80) Red |
+| `pillar` | SegFormer (column) + YOLO+SAM2 backup | ✅ Yes | (80, 80, 255) Blue |
+| `balcony` | YOLO-World + SAM2 | ✅ Yes | (255, 200, 50) Yellow |
+| `roof` | YOLO-World + SAM2 (smart-clipped boxes) | ✅ Yes | (50, 200, 200) Teal |
+| `boundary_wall` | SegFormer (fence) + YOLO+SAM2 backup | ✅ Yes | (200, 150, 50) Gold |
+| `window` | SegFormer (windowpane, curtain) + YOLO+SAM2 | 🔒 Protected | (100, 200, 100) Green |
+| `door` | SegFormer (door) + YOLO+SAM2 | 🔒 Protected | (255, 140, 0) Orange |
+
+---
+
+## File Structure
+
 ```
 backend/
-├── main.py                  # FastAPI app + CORS
+├── main.py                     # FastAPI app + CORS + routes
 ├── requirements.txt
-├── .env                     # GOOGLE_APPLICATION_CREDENTIALS, PROJECT_ID
+├── .env                        # GCP credentials, project ID
 │
 ├── routers/
-│   ├── analyze.py           # M1 — Image understanding
-│   ├── segment.py           # M2 — Gemini segmentation
-│   ├── composite.py         # M4 — OpenCV compositing
-│   ├── visualize.py         # M5 — Gemini image generation
-│   ├── estimate.py          # M6 — Area + cost calculation
-│   └── report.py            # M7 — PDF generation
+│   ├── analyze.py              # M1 — Image validation + analysis
+│   ├── segment.py              # M2 — SegFormer + YOLO + SAM2
+│   ├── composite.py            # M4 — OpenCV paint/texture overlay
+│   ├── visualize.py            # M5 — Gemini image generation
+│   ├── estimate.py             # M6 — Area + cost calculation
+│   └── report.py               # M7 — PDF generation
 │
 ├── services/
-│   ├── gemini_client.py     # Vertex AI Gemini client (shared)
-│   ├── segmentation.py      # Segmentation logic + mask processing
-│   ├── compositing.py       # OpenCV texture overlay logic
-│   ├── cost_engine.py       # Rates DB + calculation logic
-│   └── pdf_builder.py       # ReportLab PDF assembly
+│   ├── gemini_client.py        # Vertex AI Gemini client (shared)
+│   ├── segmentation.py         # SegFormer + YOLO + SAM2 pipeline
+│   ├── compositing.py          # OpenCV paint/texture logic
+│   ├── cost_engine.py          # Rate DB + calculation
+│   └── pdf_builder.py          # ReportLab PDF assembly
+│
+├── models/                     # AI model weights (gitignored)
+│   ├── yolov8s-worldv2.pt
+│   └── sam2_b.pt
+│   # SegFormer auto-downloads from HuggingFace cache
 │
 ├── data/
-│   ├── materials.json       # Material catalog (rates, textures, colors)
-│   ├── rates.json           # Labor + material rates (₹)
-│   └── textures/            # Texture image files (PNG)
+│   ├── materials.json          # Material catalog
+│   ├── rates.json              # Material + labor rates (INR)
+│   └── textures/               # Texture image files (PNG)
 │       ├── stone_natural.png
 │       ├── stone_slate.png
 │       ├── tile_marble.png
-│       ├── tile_wood.png
-│       ├── texture_sand.png
-│       └── texture_concrete.png
+│       └── texture_sand.png
 │
-└── temp/                    # Runtime temp files (gitignored)
-    └── .gitkeep
-```
+└── temp/                       # Runtime temp (gitignored)
 
-### Frontend
-```
 frontend/
 ├── index.html
 ├── vite.config.js
@@ -116,186 +91,270 @@ frontend/
 │
 ├── src/
 │   ├── main.jsx
-│   ├── App.jsx              # Route definitions
-│   ├── index.css            # Global design system
+│   ├── App.jsx
+│   ├── index.css               # Design system
 │   │
 │   ├── pages/
-│   │   ├── UploadPage.jsx       # Step 1
-│   │   ├── SegmentPage.jsx      # Step 2
-│   │   ├── MaterialPage.jsx     # Step 3
-│   │   ├── VisualizePage.jsx    # Step 4 + 5
-│   │   ├── CostPage.jsx         # Step 6
-│   │   └── ReportPage.jsx       # Step 7
+│   │   ├── UploadPage.jsx      # Step 1 — Upload + M1 validation
+│   │   ├── SegmentPage.jsx     # Step 2 — View segmented regions
+│   │   ├── MaterialPage.jsx    # Step 3 — Select materials
+│   │   ├── VisualizePage.jsx   # Step 4 — AI render + before/after
+│   │   ├── CostPage.jsx        # Step 5 — Cost breakdown
+│   │   └── ReportPage.jsx      # Step 6 — Download PDF
 │   │
 │   ├── components/
-│   │   ├── Stepper.jsx          # Step progress indicator
-│   │   ├── ImageUploader.jsx    # Drag & drop upload
-│   │   ├── SegmentOverlay.jsx   # Colored mask overlay on image
-│   │   ├── RegionPanel.jsx      # Region list sidebar
-│   │   ├── MaterialCard.jsx     # Material option card
-│   │   ├── ColorPicker.jsx      # Paint color picker
-│   │   ├── BeforeAfterSlider.jsx # Before/After comparison
-│   │   ├── CostTable.jsx        # Editable cost breakdown
-│   │   └── LoadingOverlay.jsx   # AI processing loading state
+│   │   ├── Stepper.jsx
+│   │   ├── ImageUploader.jsx
+│   │   ├── SegmentOverlay.jsx
+│   │   ├── MaterialCard.jsx
+│   │   ├── BeforeAfterSlider.jsx
+│   │   ├── CostTable.jsx
+│   │   └── LoadingOverlay.jsx
 │   │
 │   ├── store/
-│   │   └── projectStore.js      # Zustand global state
+│   │   └── projectStore.js     # Zustand global state
 │   │
-│   ├── api/
-│   │   └── client.js            # Axios API calls
-│   │
-│   └── constants/
-│       ├── materials.js         # Material catalog (mirrored from backend)
-│       └── regions.js           # Region display config + colors
+│   └── api/
+│       └── client.js           # Axios API calls
 ```
 
 ---
 
-## Module-by-Module Implementation
+## Module 1 — Image Validation & Analysis (Gemini Vision)
 
----
+**Purpose**: Validate uploaded image is a usable house exterior photo. Reject blurry, non-house, or low-quality images.
 
-### Module 1 — Image Understanding (Gemini Vision)
-
-**File**: `backend/routers/analyze.py`  
+**File**: `backend/routers/analyze.py`
 **API**: `POST /api/analyze`
+**Model**: `gemini-3.1-pro-preview` via Vertex AI
 
-**What it does**:
-- Accepts uploaded image (base64 or multipart)
-- Calls Gemini 1.5 Pro Vision via Vertex AI
-- Returns structured JSON about the house
+### What It Validates
 
-**Gemini Prompt**:
+| Check | How | Reject If |
+|-------|-----|-----------|
+| **Is it a house?** | Gemini Vision analysis | No building detected |
+| **Image quality** | Gemini checks blur/noise/resolution | Extremely blurry or dark |
+| **Exterior view?** | Gemini checks if it's interior | Interior photo detected |
+| **Obstruction** | Gemini checks if house is visible | House mostly hidden by trees/vehicles |
+| **Orientation** | Gemini checks angle | Extreme angle (top-down, too close) |
+
+### Gemini Prompt
 ```
-You are an architectural analysis AI.
+You are an architectural image validation and analysis AI.
 
-Analyze this exterior house image and return ONLY a valid JSON object with this exact structure:
+FIRST, validate this image:
+1. Is there a residential building/house clearly visible?
+2. Is this an EXTERIOR view (not interior)?
+3. Is the image quality acceptable (not extremely blurry, dark, or low resolution)?
+4. Is the building facade reasonably visible (not completely blocked by trees/vehicles)?
 
+IF the image fails any check, set "is_valid" to false and explain in "rejection_reason".
+
+IF valid, analyze the architecture and return:
+- Number of floors
+- Which regions are visible
+- Any notable observations
+
+Return ONLY a valid JSON object:
 {
-  "image_quality": "good|poor|unusable",
-  "house_detected": true|false,
-  "rejection_reason": null or "string",
-  "floors": 1|2|3,
-  "regions_present": ["main_wall", "pillar", "balcony", "railing", "roof", "boundary_wall"],
-  "protected_regions": ["window", "door", "sky", "trees"],
-  "confidence": 0.0-1.0,
-  "notes": "any relevant observation"
+  "is_valid": true,
+  "rejection_reason": null,
+  "image_quality": "good|acceptable|poor",
+  "is_exterior": true,
+  "house_detected": true,
+  "floors": 2,
+  "regions_present": ["main_wall", "pillar", "balcony", "roof", "boundary_wall"],
+  "protected_regions": ["window", "door"],
+  "confidence": 0.95,
+  "notes": "Two-story residential building with front balcony and boundary wall"
 }
-
-Only include regions from this list:
-main_wall, accent_wall, pillar, balcony, railing, roof, boundary_wall, window, door
 ```
 
-**Response to frontend**:
+### API Request/Response
+```
+POST /api/analyze
+Content-Type: multipart/form-data
+
+Body: image file (PNG/JPG)
+```
+
 ```json
+// Success Response
 {
-  "session_id": "uuid",
-  "image_b64": "...",
-  "analysis": { ... }
+  "session_id": "uuid-string",
+  "is_valid": true,
+  "analysis": {
+    "image_quality": "good",
+    "floors": 2,
+    "regions_present": ["main_wall", "pillar", "balcony", "roof", "boundary_wall"],
+    "protected_regions": ["window", "door"],
+    "confidence": 0.95,
+    "notes": "Two-story house with front balcony"
+  }
 }
+
+// Rejection Response
+{
+  "session_id": null,
+  "is_valid": false,
+  "rejection_reason": "No building detected. The image appears to be a landscape photo.",
+  "suggestion": "Please upload a clear front-facing photo of a house exterior."
+}
+```
+
+### Implementation
+```python
+# backend/routers/analyze.py
+
+from fastapi import APIRouter, UploadFile, File
+import uuid, base64, json
+from services.gemini_client import call_gemini_vision
+
+router = APIRouter()
+
+@router.post("/api/analyze")
+async def analyze_image(image: UploadFile = File(...)):
+    # 1. Read and encode image
+    image_bytes = await image.read()
+    image_b64 = base64.b64encode(image_bytes).decode("utf-8")
+    mime = image.content_type or "image/png"
+
+    # 2. Call Gemini Vision for validation + analysis
+    result = call_gemini_vision(image_b64, mime, VALIDATION_PROMPT)
+
+    # 3. Check validation
+    if not result.get("is_valid", False):
+        return {
+            "session_id": None,
+            "is_valid": False,
+            "rejection_reason": result.get("rejection_reason", "Image not usable"),
+            "suggestion": "Please upload a clear front-facing photo of a house exterior."
+        }
+
+    # 4. Return analysis
+    session_id = str(uuid.uuid4())
+    return {
+        "session_id": session_id,
+        "is_valid": True,
+        "image_b64": image_b64,
+        "analysis": result
+    }
 ```
 
 ---
 
-### Module 2 — Segmentation (Gemini Segmentation API via Vertex AI)
+## Module 2 — Segmentation (SegFormer + YOLO-World + SAM2)
 
-**File**: `backend/routers/segment.py`  
+**Purpose**: Generate pixel-accurate binary masks for each architectural region.
+
+**File**: `backend/routers/segment.py` + `backend/services/segmentation.py`
 **API**: `POST /api/segment`
 
-**What it does**:
-- Takes the house image + list of regions from M1
-- Calls Gemini Segmentation model (Vertex AI)
-- Returns binary masks for each detected region
-- Returns colored overlay for UI display
+### Pipeline (3 Phases)
 
-**Gemini Segmentation Call**:
-```python
-# Vertex AI Gemini segmentation
-from google.cloud import aiplatform
-from vertexai.preview.generative_models import GenerativeModel, Image
+```
+Phase 1: SegFormer-b4 (Sliding Window)
+    Input:  House image (2816x1536)
+    Method: 50 overlapping 512x512 tiles, logit averaging
+    Output: Pixel-level masks for: main_wall, window, door, pillar, boundary_wall
+    
+Phase 2: YOLO-World + SAM2 (Area-Constrained)
+    Input:  House image
+    Method: YOLO detects boxes → SAM2 refines to masks
+    Output: Masks for: roof, balcony, pillar, boundary_wall (backup)
+    Filters:
+      - Per-region max box size (roof ≤ 10%, balcony ≤ 20%)
+      - Per-region max mask area (roof ≤ 10%, pillar ≤ 5%)
+      - Smart roof clipping: oversized roof boxes → clip to top 25%
 
-model = GenerativeModel("gemini-2.0-flash-exp")  # or segmentation variant
-
-# Prompt format for segmentation
-prompt = """
-Segment the following architectural regions from this house exterior image.
-Return segmentation masks for each region separately.
-
-Regions to segment:
-- main_wall (the primary exterior wall surface)
-- accent_wall (lower or secondary wall, if present)
-- pillar (any columns or pillars)
-- balcony (balcony slab or wall)
-- railing (balcony or staircase railing)
-- roof (visible roof surface or edge)
-- boundary_wall (compound wall)
-
-Do NOT segment: windows, doors, sky, trees, vehicles, people.
-"""
+Phase 3: Post-Processing
+    - Morphological cleanup (close holes, remove noise < 500px)
+    - Gentle cleanup for thin structures (pillar: 3x3 kernel, no opening)
+    - Exclusive mask assignment (priority-based, no pixel overlap)
+    - Priority: door(8) > window(7) > pillar(5) > boundary_wall(4)
+              > balcony(3) > roof(2) > main_wall(1)
 ```
 
-**Mask Processing** (`backend/services/segmentation.py`):
+### ADE20K Class Mapping (SegFormer)
 ```python
-def process_masks(raw_masks, image_shape):
-    """
-    Convert Gemini segmentation output to binary PNG masks.
-    Returns dict: { "main_wall": binary_mask_array, ... }
-    """
-    masks = {}
-    for region_id, mask_data in raw_masks.items():
-        # Resize to match original image dimensions
-        binary_mask = cv2.resize(mask_data, (image_shape[1], image_shape[0]))
-        # Threshold to binary
-        _, binary = cv2.threshold(binary_mask, 127, 255, cv2.THRESH_BINARY)
-        masks[region_id] = binary
-    return masks
-
-def create_overlay_image(original_image, masks):
-    """
-    Create a colored overlay image for UI display.
-    Each region gets a distinct semi-transparent color.
-    """
-    REGION_COLORS = {
-        "main_wall":     (255, 100, 100, 120),  # Red
-        "accent_wall":   (100, 200, 100, 120),  # Green
-        "pillar":        (100, 100, 255, 120),  # Blue
-        "balcony":       (255, 200,  50, 120),  # Yellow
-        "railing":       (200,  50, 200, 120),  # Purple
-        "roof":          (50,  200, 200, 120),  # Cyan
-        "boundary_wall": (200, 150,  50, 120),  # Brown
-    }
-    overlay = original_image.copy()
-    for region_id, mask in masks.items():
-        color = REGION_COLORS.get(region_id, (200, 200, 200, 100))
-        overlay = apply_colored_mask(overlay, mask, color)
-    return overlay
+ADE20K_TO_REGION = {
+    0:   "main_wall",       # wall
+    1:   "main_wall",       # building / facade
+    8:   "window",          # windowpane
+    14:  "door",            # door
+    18:  "window",          # curtain (visible through windows)
+    25:  "main_wall",       # house
+    32:  "boundary_wall",   # fence
+    42:  "pillar",          # column / pillar
+}
 ```
 
-**Response to frontend**:
+### YOLO-World Classes
+```python
+YOLO_CLASSES = ["wall", "roof", "pillar", "balcony", "fence", "window", "door"]
+```
+
+### API Request/Response
+```
+POST /api/segment
+Content-Type: application/json
+
+Body: { "session_id": "uuid", "image_b64": "base64..." }
+```
+
 ```json
 {
   "session_id": "uuid",
   "masks": {
-    "main_wall":    "base64_png",
-    "pillar":       "base64_png",
-    "balcony":      "base64_png",
-    "railing":      "base64_png",
-    "roof":         "base64_png",
-    "boundary_wall":"base64_png"
+    "main_wall":     "base64_png_mask",
+    "pillar":        "base64_png_mask",
+    "balcony":       "base64_png_mask",
+    "roof":          "base64_png_mask",
+    "boundary_wall": "base64_png_mask",
+    "window":        "base64_png_mask",
+    "door":          "base64_png_mask"
   },
   "overlay_image": "base64_png",
-  "detected_regions": ["main_wall", "pillar", "balcony", "railing", "roof"]
+  "detected_regions": ["main_wall", "pillar", "balcony", "roof", "boundary_wall"],
+  "protected_regions": ["window", "door"],
+  "region_coverage": {
+    "main_wall": 51.9,
+    "pillar": 2.4,
+    "balcony": 3.5,
+    "roof": 2.0,
+    "boundary_wall": 3.8,
+    "window": 5.2,
+    "door": 1.3
+  }
 }
 ```
 
+### Processing Time
+- SegFormer sliding window (50 tiles on GTX 1650): ~3-4 minutes
+- YOLO-World detection: ~2 seconds
+- SAM2 mask refinement: ~5 seconds per region
+- Post-processing: ~1 second
+- **Total: ~4-5 minutes per image**
+
 ---
 
-### Module 3 — Material Catalog (Frontend)
+## Module 3 — Material Catalog (Frontend Only)
 
-**No backend call needed** — pure frontend state management.
+**No backend call needed** — pure frontend state.
 
-**`frontend/src/constants/materials.js`**:
+### Material Options Per Region
+
+| Region | Paint (5 colors) | Texture Options |
+|--------|-----------------|-----------------|
+| `main_wall` | White, Cream, Beige, Grey, Terracotta | Stone Cladding (3), Texture Finish (2) |
+| `pillar` | White, Cream, Beige, Grey, Terracotta | Texture Finish (2), Stone Cladding (2) |
+| `balcony` | White, Cream, Beige, Grey, Terracotta | Tile (2 types) |
+| `roof` | — | Tile Roofing (2), Flat Concrete |
+| `boundary_wall` | White, Cream, Beige, Grey, Terracotta | Stone Cladding (2) |
+
+### Frontend Data Structure
 ```javascript
+// frontend/src/constants/materials.js
 export const MATERIAL_CATALOG = {
   main_wall: {
     label: "Main Wall",
@@ -313,107 +372,95 @@ export const MATERIAL_CATALOG = {
       {
         id: "stone_cladding", label: "Stone Cladding", type: "texture",
         options: [
-          { id: "natural_stone", label: "Natural Stone",  texture: "/textures/stone_natural.png", rate: 180 },
-          { id: "slate_stone",   label: "Slate Stone",    texture: "/textures/stone_slate.png",   rate: 160 },
-          { id: "sandstone",     label: "Sandstone",      texture: "/textures/stone_sand.png",    rate: 140 },
+          { id: "natural_stone", label: "Natural Stone", texture: "stone_natural.png", rate: 180 },
+          { id: "slate_stone",   label: "Slate Stone",   texture: "stone_slate.png",   rate: 160 },
+          { id: "sandstone",     label: "Sandstone",      texture: "stone_sand.png",    rate: 140 },
         ]
       },
       {
         id: "texture_finish", label: "Texture Finish", type: "texture",
         options: [
-          { id: "sand_texture",     label: "Sand Texture",     texture: "/textures/texture_sand.png",     rate: 90 },
-          { id: "concrete_texture", label: "Concrete Texture",  texture: "/textures/texture_concrete.png", rate: 80 },
+          { id: "sand_texture",     label: "Sand Texture",     texture: "texture_sand.png",     rate: 90 },
+          { id: "concrete_texture", label: "Concrete Texture", texture: "texture_concrete.png", rate: 80 },
         ]
-      },
+      }
     ]
   },
-  railing: {
-    label: "Railing",
-    options: [
-      { id: "glass",  label: "Glass Railing",     color: "#C8E6FA", rate: 2500 },
-      { id: "black",  label: "Black Metal",        color: "#2D2D2D", rate: 1200 },
-      { id: "steel",  label: "Stainless Steel",    color: "#C0C0C0", rate: 1500 },
-    ]
-  },
-  // ... other regions
-}
-```
-
-**Zustand Global State** (`frontend/src/store/projectStore.js`):
-```javascript
-{
-  sessionId: null,
-  originalImage: null,        // base64
-  analysisResult: null,       // M1 output
-  masks: {},                  // { region_id: base64_mask }
-  overlayImage: null,         // colored overlay base64
-  detectedRegions: [],        // list of region IDs
-  
-  materialSelection: {        // M3 — user choices
-    // "main_wall": { material: "stone_cladding", style: "natural_stone", color: null }
-    // "railing":   { material: "glass" }
-  },
-  
-  compositeImage: null,       // M4 output
-  finalImage: null,           // M5 output
-  
-  costData: null,             // M6 output
-  houseWidth: 30,             // user input for scale (feet)
+  // ... other regions follow same structure
 }
 ```
 
 ---
 
-### Module 4 — OpenCV Compositing (Preview)
+## Module 4 — OpenCV Compositing (Preview)
 
-**File**: `backend/routers/composite.py`  
+**Purpose**: Apply selected materials to the house image using masks. Fast preview (~1-2 seconds).
+
+**File**: `backend/routers/composite.py` + `backend/services/compositing.py`
 **API**: `POST /api/composite`
 
-**What it does**:
-- For each region → material selection:
-  - **Paint**: Flood-fill mask region with selected color + brightness blend
-  - **Texture** (Stone/Tile): Tile texture image over mask region with perspective correction
-  - **Railing**: Apply color tint to railing mask
-- Returns a composite preview image (fast, ~1-2 seconds)
-
-**Core logic** (`backend/services/compositing.py`):
+### Paint Application (HSL Blend)
 ```python
 def apply_paint(image, mask, hex_color):
-    """Replace masked region pixels with color, preserve shadows/depth."""
-    rgb = hex_to_rgb(hex_color)
+    """Apply paint color while preserving original shadows and depth."""
+    rgb = hex_to_rgb(hex_color)  # e.g. "#F5F5F0" → (245, 245, 240)
     colored = np.zeros_like(image)
-    colored[:] = rgb
-    
-    # Blend: keep original luminance, apply new color (HSL blend mode)
+    colored[:] = rgb[::-1]  # RGB → BGR
+
+    # Extract luminance from original image to preserve shadows
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     luminance = gray / 255.0
-    
+
     result = image.copy()
+    mask_bool = mask > 127
     for c in range(3):
         result[:, :, c] = np.where(
-            mask > 0,
+            mask_bool,
             np.clip(colored[:, :, c] * luminance * 1.2, 0, 255),
             image[:, :, c]
         )
-    return result
-
-def apply_texture(image, mask, texture_path):
-    """Tile texture over masked region with perspective adjustment."""
-    texture = cv2.imread(texture_path)
-    h, w = image.shape[:2]
-    
-    # Tile texture to fill image dimensions
-    tiled = tile_texture(texture, h, w)
-    
-    # Apply only within mask
-    result = image.copy()
-    mask_3ch = cv2.merge([mask, mask, mask]) / 255.0
-    result = (result * (1 - mask_3ch) + tiled * mask_3ch).astype(np.uint8)
-    
-    return result
+    return result.astype(np.uint8)
 ```
 
-**Response**:
+### Texture Application (Tiled Overlay)
+```python
+def apply_texture(image, mask, texture_path):
+    """Tile texture over masked region with edge blending."""
+    texture = cv2.imread(texture_path)
+    h, w = image.shape[:2]
+
+    # Tile texture to fill image dimensions
+    th, tw = texture.shape[:2]
+    repeat_y = (h // th) + 1
+    repeat_x = (w // tw) + 1
+    tiled = np.tile(texture, (repeat_y, repeat_x, 1))[:h, :w]
+
+    # Blend: 70% texture + 30% original luminance for realism
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) / 255.0
+    gray_3ch = np.stack([gray]*3, axis=2)
+
+    blended = (tiled * 0.7 + tiled * gray_3ch * 0.3).astype(np.uint8)
+
+    # Apply only within mask
+    mask_3ch = np.stack([mask > 127]*3, axis=2)
+    result = np.where(mask_3ch, blended, image)
+    return result.astype(np.uint8)
+```
+
+### API Request/Response
+```
+POST /api/composite
+Body: {
+  "session_id": "uuid",
+  "image_b64": "base64...",
+  "masks": { "main_wall": "base64...", ... },
+  "selections": {
+    "main_wall": { "type": "paint", "color": "#F5F5F0" },
+    "pillar":    { "type": "texture", "texture": "stone_natural.png" },
+    "balcony":   { "type": "paint", "color": "#D8C7A3" }
+  }
+}
+```
 ```json
 {
   "composite_image": "base64_png"
@@ -422,212 +469,155 @@ def apply_texture(image, mask, texture_path):
 
 ---
 
-### Module 5 — AI Visualization (Gemini Image Generation)
+## Module 5 — AI Visualization (Gemini Image Generation)
 
-**File**: `backend/routers/visualize.py`  
+**Purpose**: Generate photorealistic renovation image using Gemini.
+
+**File**: `backend/routers/visualize.py`
 **API**: `POST /api/visualize`
+**Model**: `gemini-2.0-flash-exp` or `imagen-3.0-capability-001`
 
-**What it does**:
-- Builds a dynamic natural-language prompt from user's material selections
-- Sends original house image + prompt to Gemini image generation (Vertex AI)
-- Returns photorealistic renovated image
-
-**Dynamic Prompt Builder**:
+### Dynamic Prompt Builder
 ```python
-def build_visualization_prompt(material_selection: dict) -> str:
+def build_prompt(selections: dict) -> str:
     lines = [
         "You are a photorealistic architectural visualization AI.",
         "",
-        "Renovate this house exterior image with the following specifications:",
-        "- Preserve the exact original architecture, structure, geometry, and camera angle",
-        "- Keep all windows, doors, and non-selected areas completely unchanged",
-        "- Apply materials realistically with correct lighting, shadows, and perspective",
+        "Renovate this house exterior with these specifications:",
+        "- Preserve the EXACT original structure, geometry, and camera angle",
+        "- Keep all windows, doors, and surroundings UNCHANGED",
+        "- Apply materials realistically with correct lighting and shadows",
         "",
         "Material specifications:",
     ]
-    
-    MATERIAL_DESCRIPTIONS = {
-        "paint":            lambda s, c: f"Apply {s['label']} exterior paint in color {c}",
-        "stone_cladding":   lambda s, _: f"Apply realistic {s['label'].lower()} stone cladding texture",
-        "texture_finish":   lambda s, _: f"Apply {s['label'].lower()} exterior texture finish",
-        "tile":             lambda s, _: f"Apply {s['label'].lower()} ceramic tiles",
-        "glass":            lambda s, _: "Install transparent glass railing panels",
-        "black":            lambda s, _: "Install black powder-coated metal railing",
-        "steel":            lambda s, _: "Install brushed stainless steel railing",
+
+    REGION_LABELS = {
+        "main_wall": "Main exterior walls",
+        "pillar": "Pillars and columns",
+        "balcony": "Balcony area",
+        "roof": "Roof surface",
+        "boundary_wall": "Boundary/compound wall",
     }
-    
-    for region_id, selection in material_selection.items():
-        region_label = REGION_LABELS[region_id]
-        material = selection["material"]
-        desc = MATERIAL_DESCRIPTIONS.get(material, lambda s, c: material)(selection, selection.get("color", ""))
-        lines.append(f"- {region_label}: {desc}")
-    
+
+    for region_id, sel in selections.items():
+        label = REGION_LABELS.get(region_id, region_id)
+        if sel["type"] == "paint":
+            lines.append(f"- {label}: Apply {sel['color_name']} exterior paint")
+        elif sel["type"] == "texture":
+            lines.append(f"- {label}: Apply {sel['texture_name']} finish")
+
     lines += [
         "",
-        "Generate a single photorealistic exterior renovation image.",
+        "Generate a single photorealistic image.",
         "Output must look like a real architectural photograph.",
     ]
-    
     return "\n".join(lines)
 ```
 
-**Gemini API Call**:
-```python
-import vertexai
-from vertexai.preview.vision_models import ImageGenerationModel
-# OR use Gemini 2.0 with image editing capability
-
-async def generate_visualization(image_b64: str, prompt: str):
-    vertexai.init(project=PROJECT_ID, location="us-central1")
-    
-    # Option A: Gemini 2.0 Flash image editing
-    model = GenerativeModel("gemini-2.0-flash-exp")
-    response = await model.generate_content_async([
-        image_from_base64(image_b64),
-        prompt
-    ])
-    
-    # Option B: Imagen 3 inpainting (if available)
-    # model = ImageGenerationModel.from_pretrained("imagen-3.0-capability-001")
-    
-    return response
-```
-
-> **Note**: Use whichever Gemini image-generation endpoint you have access to on Vertex AI.
-> If Gemini 2.0 Flash supports image output in your project, use that.
-> Otherwise fall back to Imagen 3.
-
-**Response**:
+### API Response
 ```json
 {
-  "final_image": "base64_png"
+  "final_image": "base64_png",
+  "prompt_used": "string (for debugging)"
 }
 ```
 
 ---
 
-### Module 6 — Area + Quantity + Cost Estimation
+## Module 6 — Cost Estimation
 
-**File**: `backend/routers/estimate.py`  
+**Purpose**: Calculate area, material quantities, and costs from masks.
+
+**File**: `backend/routers/estimate.py` + `backend/services/cost_engine.py`
 **API**: `POST /api/estimate`
 
-**Rates Database** (`backend/data/rates.json`):
+### Area Calculation from Masks
+```python
+def calculate_area_sqft(mask_b64: str, image_width_px: int, house_width_ft: float) -> float:
+    """
+    Convert mask pixel count to square feet.
+    User provides house_width_ft as reference scale.
+    """
+    mask = base64_to_array(mask_b64)
+    mask_pixels = np.count_nonzero(mask)
+
+    pixels_per_ft = image_width_px / house_width_ft
+    area_sqft = mask_pixels / (pixels_per_ft ** 2)
+
+    return round(area_sqft, 1)
+```
+
+### Rates Database (`backend/data/rates.json`)
 ```json
 {
   "material_rates": {
-    "paint":            { "unit": "litre",      "rate": 450,  "coverage": 100 },
-    "stone_cladding":   { "unit": "sqft",       "rate": 180,  "wastage": 0.10 },
-    "tile":             { "unit": "sqft",       "rate": 150,  "wastage": 0.10 },
-    "texture_finish":   { "unit": "sqft",       "rate": 90,   "wastage": 0.05 },
-    "glass_railing":    { "unit": "running_ft", "rate": 2500 },
-    "black_railing":    { "unit": "running_ft", "rate": 1200 },
-    "steel_railing":    { "unit": "running_ft", "rate": 1500 }
+    "paint":          { "unit": "litre",  "rate_inr": 450,  "coverage_sqft": 100 },
+    "stone_cladding": { "unit": "sqft",   "rate_inr": 180,  "wastage": 0.10 },
+    "tile":           { "unit": "sqft",   "rate_inr": 150,  "wastage": 0.10 },
+    "texture_finish": { "unit": "sqft",   "rate_inr": 90,   "wastage": 0.05 },
+    "tile_roofing":   { "unit": "sqft",   "rate_inr": 200,  "wastage": 0.10 }
   },
   "labor_rates": {
-    "paint":          { "unit": "sqft",       "rate": 25  },
-    "stone_cladding": { "unit": "sqft",       "rate": 70  },
-    "tile":           { "unit": "sqft",       "rate": 50  },
-    "texture_finish": { "unit": "sqft",       "rate": 40  },
-    "railing":        { "unit": "running_ft", "rate": 300 }
+    "paint":          { "unit": "sqft",   "rate_inr": 25  },
+    "stone_cladding": { "unit": "sqft",   "rate_inr": 70  },
+    "tile":           { "unit": "sqft",   "rate_inr": 50  },
+    "texture_finish": { "unit": "sqft",   "rate_inr": 40  },
+    "tile_roofing":   { "unit": "sqft",   "rate_inr": 60  }
   }
 }
 ```
 
-**Area Calculation from Masks**:
-```python
-def estimate_area_sqft(mask_b64: str, house_width_ft: float, image_width_px: int) -> float:
-    """
-    Pixel counting approach:
-    1. Count non-zero pixels in mask
-    2. Compute scale: pixels_per_ft = image_width_px / house_width_ft
-    3. area_sqft = mask_pixels / (pixels_per_ft^2)
-    """
-    mask = base64_to_array(mask_b64)
-    mask_pixels = np.count_nonzero(mask)
-    
-    pixels_per_ft = image_width_px / house_width_ft
-    area_sqft = mask_pixels / (pixels_per_ft ** 2)
-    
-    return round(area_sqft, 1)
-```
-
-**Cost Calculation Output**:
+### API Response
 ```json
 {
   "areas": {
-    "main_wall":    { "area": 820, "unit": "sqft" },
-    "pillar":       { "area": 120, "unit": "sqft" },
-    "railing":      { "area": 42,  "unit": "running_ft" }
-  },
-  "quantities": {
-    "main_wall":    { "material": "stone_cladding", "quantity": 275, "unit": "sqft" },
-    "railing":      { "material": "glass_railing",  "quantity": 42,  "unit": "running_ft" }
+    "main_wall": { "area_sqft": 820.5, "pixels": 2245000 },
+    "pillar":    { "area_sqft": 48.2,  "pixels": 103000 }
   },
   "cost_breakdown": [
     {
       "region": "Main Wall",
       "material": "Natural Stone Cladding",
-      "area": 275,
-      "material_cost": 49500,
-      "labor_cost": 19250,
-      "total": 68750
+      "area_sqft": 820.5,
+      "quantity": "902 sqft (incl. 10% wastage)",
+      "material_cost": 162360,
+      "labor_cost": 57435,
+      "total": 219795
     }
   ],
   "summary": {
-    "total_material_cost": 95000,
-    "total_labor_cost": 35000,
-    "grand_total": 130000
+    "total_material_cost": 195000,
+    "total_labor_cost": 72000,
+    "grand_total": 267000,
+    "currency": "INR"
   }
 }
 ```
 
 ---
 
-### Module 7 — PDF Report (ReportLab)
+## Module 7 — PDF Report (ReportLab)
 
-**File**: `backend/routers/report.py`  
+**Purpose**: Generate downloadable PDF report.
+
+**File**: `backend/routers/report.py` + `backend/services/pdf_builder.py`
 **API**: `POST /api/report`
 
-**Report Sections**:
-1. Cover — Project title, date
-2. Original house image
-3. Renovated AI image
-4. Material selection table
-5. Area calculation table
-6. Quantity table
-7. Cost breakdown table
-8. Grand total
-9. Assumptions + Disclaimer
+### PDF Sections
+1. **Cover Page** — Title, date, project reference
+2. **Original House Image** — Full width
+3. **Segmentation Overlay** — Colored region map
+4. **AI Renovated Image** — Full width
+5. **Material Selection Table** — Region → Material → Color/Texture
+6. **Area Calculation Table** — Region → Pixels → Sqft
+7. **Cost Breakdown Table** — Material cost + Labor cost per region
+8. **Grand Total** — Highlighted box
+9. **Assumptions & Disclaimer**
 
-```python
-from reportlab.platypus import SimpleDocTemplate, Image, Table, Paragraph
-from reportlab.lib.pagesizes import A4
-
-def build_report(data: dict) -> bytes:
-    buffer = BytesIO()
-    doc = SimpleDocTemplate(buffer, pagesize=A4)
-    
-    story = []
-    story.append(Paragraph("House Exterior Renovation Report", title_style))
-    story.append(Paragraph(f"Date: {today}", normal_style))
-    
-    # Before / After images side by side
-    story.append(two_column_images(data["original_image"], data["final_image"]))
-    
-    # Material selection
-    story.append(material_table(data["material_selection"]))
-    
-    # Cost breakdown
-    story.append(cost_table(data["cost_breakdown"]))
-    
-    # Grand total
-    story.append(grand_total_box(data["summary"]))
-    
-    # Disclaimer
-    story.append(Paragraph(DISCLAIMER_TEXT, small_style))
-    
-    doc.build(story)
-    return buffer.getvalue()
+### API Response
+```
+Content-Type: application/pdf
+Content-Disposition: attachment; filename="renovation_report.pdf"
 ```
 
 ---
@@ -635,69 +625,57 @@ def build_report(data: dict) -> bytes:
 ## Frontend Page Flow
 
 ```
-Step 1: Upload Page
-  → Drag/drop or click to upload image
-  → POST /api/analyze
-  → Show: image quality, house detected, floors, regions found
-
-Step 2: Segment Page
-  → "Segment My House" button
-  → POST /api/segment
-  → Show: original image with colored mask overlay
-  → List detected regions with checkboxes (user can deselect)
-  → "Looks Good, Continue" button
-
-Step 3: Material Selection Page
-  → Left: House image with region highlight on hover
-  → Right: Material panel for selected region
-  → For each region: choose material type → color/texture
-  → Show: composite preview (POST /api/composite, called on every selection change)
-  → "Generate AI Visualization" button
-
-Step 4: Visualization Page
-  → POST /api/visualize (takes 10-30s, show loading)
-  → Before/After slider (original vs AI image)
-  → "Calculate Cost" button
-
-Step 5: Cost Page
-  → Input: house_width_ft (default 30ft)
-  → POST /api/estimate
-  → Editable rate table
-  → On rate change: recalculate client-side
-  → Grand total highlight
-
-Step 6: Report Page
-  → Preview of all data
-  → "Download PDF Report" button
-  → POST /api/report → download PDF file
+┌─────────────────────────────────────────────────────────┐
+│  Step 1: Upload Page                                     │
+│  ├── Drag & drop image upload                           │
+│  ├── POST /api/analyze                                  │
+│  ├── Show validation result (pass/fail)                 │
+│  ├── If fail: show rejection reason + suggestion        │
+│  └── If pass: show analysis (floors, regions) → Next    │
+├─────────────────────────────────────────────────────────┤
+│  Step 2: Segment Page                                    │
+│  ├── "Segment My House" button                          │
+│  ├── POST /api/segment (loading: ~4-5 min)              │
+│  ├── Show: original image with colored overlay           │
+│  ├── Sidebar: list detected regions with toggle          │
+│  └── "Looks Good, Continue" → Next                      │
+├─────────────────────────────────────────────────────────┤
+│  Step 3: Material Selection Page                         │
+│  ├── Left: House image, highlight region on hover        │
+│  ├── Right: Material panel for selected region           │
+│  ├── For each region: choose Paint/Texture               │
+│  ├── Live preview: POST /api/composite on change         │
+│  └── "Generate AI Visualization" → Next                  │
+├─────────────────────────────────────────────────────────┤
+│  Step 4: Visualization Page                              │
+│  ├── POST /api/visualize (loading: 10-30s)              │
+│  ├── Before/After slider comparison                     │
+│  └── "Calculate Cost" → Next                            │
+├─────────────────────────────────────────────────────────┤
+│  Step 5: Cost Page                                       │
+│  ├── Input: house_width_ft (default 30ft)               │
+│  ├── POST /api/estimate                                 │
+│  ├── Editable cost table (change rates → recalculate)   │
+│  └── Grand total highlighted                            │
+├─────────────────────────────────────────────────────────┤
+│  Step 6: Report Page                                     │
+│  ├── Preview summary of all data                        │
+│  └── "Download PDF" → POST /api/report                  │
+└─────────────────────────────────────────────────────────┘
 ```
 
 ---
 
 ## API Summary
 
-| Method | Endpoint | Module | Input | Output |
-|--------|----------|--------|-------|--------|
-| POST | `/api/analyze` | M1 | image file | analysis JSON |
-| POST | `/api/segment` | M2 | image + regions | masks + overlay |
-| POST | `/api/composite` | M4 | image + masks + selection | preview image |
-| POST | `/api/visualize` | M5 | image + selection | AI image |
-| POST | `/api/estimate` | M6 | masks + selection + width | cost JSON |
-| POST | `/api/report` | M7 | full project data | PDF binary |
-
----
-
-## Environment Variables
-
-```env
-# backend/.env
-GOOGLE_CLOUD_PROJECT=your-project-id
-GOOGLE_APPLICATION_CREDENTIALS=path/to/service-account.json
-GEMINI_MODEL_VISION=gemini-1.5-pro
-GEMINI_MODEL_SEGMENT=gemini-2.0-flash-exp
-GEMINI_MODEL_IMAGE=gemini-2.0-flash-exp
-VERTEX_LOCATION=us-central1
-```
+| Method | Endpoint | Module | Time | Input | Output |
+|--------|----------|--------|------|-------|--------|
+| POST | `/api/analyze` | M1 | ~5s | Image file | Validation + analysis JSON |
+| POST | `/api/segment` | M2 | ~4-5min | Image base64 | Masks + overlay |
+| POST | `/api/composite` | M4 | ~1-2s | Image + masks + selections | Preview image |
+| POST | `/api/visualize` | M5 | ~10-30s | Image + prompt | AI-generated image |
+| POST | `/api/estimate` | M6 | ~1s | Masks + selections + width | Cost JSON |
+| POST | `/api/report` | M7 | ~2s | Full project data | PDF binary |
 
 ---
 
@@ -706,72 +684,80 @@ VERTEX_LOCATION=us-central1
 ### Backend (`requirements.txt`)
 ```
 fastapi
-uvicorn
+uvicorn[standard]
 python-multipart
-google-cloud-aiplatform
-vertexai
-opencv-python-headless
-Pillow
-numpy
-reportlab
 python-dotenv
 pydantic
+
+# AI Models
+torch
+transformers
+ultralytics
+Pillow
+
+# Image Processing
+opencv-python-headless
+numpy
+
+# Google Cloud
+google-cloud-aiplatform
+google-auth
+requests
+
+# PDF
+reportlab
 ```
 
-### Frontend (`package.json` deps)
-```
-react
-react-router-dom
-zustand
-axios
-react-dropzone
-react-before-after-slider-component
-react-colorful
+### Frontend (`package.json`)
+```json
+{
+  "dependencies": {
+    "react": "^18",
+    "react-dom": "^18",
+    "react-router-dom": "^6",
+    "zustand": "^4",
+    "axios": "^1",
+    "react-dropzone": "^14",
+    "react-before-after-slider-component": "^1",
+    "react-colorful": "^5"
+  }
+}
 ```
 
 ---
 
-## Deployment
-
-### Backend (Render)
-- Service type: Web Service
-- Build: `pip install -r requirements.txt`
-- Start: `uvicorn main:app --host 0.0.0.0 --port $PORT`
-- Env vars: Set all from `.env` in Render dashboard
-- GCP credentials: Upload service account JSON, set path env var
-
-### Frontend (Vercel)
-- Framework: Vite
-- Build: `npm run build`
-- Output: `dist/`
-- Env: `VITE_API_URL=https://your-render-backend.onrender.com`
-
----
-
-## Build Order (Recommended)
+## Build Order
 
 ```
-Day 1 — Morning
-  1. Project setup (backend + frontend scaffold)
-  2. M1 — Gemini image analysis endpoint + test
-  3. M2 — Gemini segmentation endpoint + mask processing + test
+Phase 1 — Backend Setup + M1 + M2 Service
+  1. Create backend/ folder with FastAPI scaffold
+  2. Port segmentation logic from test_m1_m2.py → services/segmentation.py
+  3. Create /api/analyze endpoint (Gemini validation)
+  4. Create /api/segment endpoint (wraps segmentation service)
+  5. Test both endpoints with curl/Postman
 
-Day 1 — Afternoon
-  4. Frontend: Upload + Segment pages
-  5. M3 — Material catalog (frontend only)
-  6. M4 — OpenCV compositing endpoint
+Phase 2 — M4 Compositing
+  6. Create services/compositing.py (paint + texture overlay)
+  7. Create /api/composite endpoint
+  8. Create texture files in data/textures/
+  9. Test with sample masks
 
-Day 2 — Morning
-  7. Frontend: Material selection page + composite preview
-  8. M5 — Gemini visualization endpoint
-  9. Frontend: Visualization page + before/after slider
+Phase 3 — Frontend Core
+  10. Scaffold React/Vite frontend
+  11. Build Upload page + M1 integration
+  12. Build Segment page + M2 integration
+  13. Build Material page + M4 live preview
 
-Day 2 — Afternoon
-  10. M6 — Cost estimation endpoint
-  11. M7 — PDF report endpoint
-  12. Frontend: Cost + Report pages
-  13. Testing end-to-end
-  14. Deploy backend to Render, frontend to Vercel
+Phase 4 — M5 + M6 + M7
+  14. Build /api/visualize (Gemini image generation)
+  15. Build /api/estimate (cost calculation)
+  16. Build /api/report (PDF generation)
+  17. Build remaining frontend pages
+
+Phase 5 — Polish + Deploy
+  18. End-to-end testing
+  19. Deploy backend to Render
+  20. Deploy frontend to Vercel
 ```
 
 ---
@@ -779,14 +765,18 @@ Day 2 — Afternoon
 ## Open Questions
 
 > [!IMPORTANT]
-> **Gemini Image Generation Access**: Confirm which Gemini image generation model you have access to on Vertex AI. Options:
-> - `gemini-2.0-flash-exp` (with image output)
-> - `imagen-3.0-capability-001`
-> - `imagegeneration@006`
-> This determines the exact API call in Module 5.
+> **GPU Hosting**: Segmentation requires GPU (~4GB VRAM). Render free tier has NO GPU. Options:
+> 1. Run M2 locally, deploy M1+M4-M7 to Render (cheapest)
+> 2. Use GPU cloud (RunPod/Modal) for M2 only
+> 3. Pre-compute masks locally, upload to frontend
+>
+> Which approach?
 
 > [!IMPORTANT]
-> **Gemini Segmentation Model**: Confirm the exact model ID you are using for segmentation via Vertex AI. The segmentation output format (PNG masks vs polygon coordinates) will affect Module 2 processing logic.
+> **Gemini Image Model**: Which model do you have access to for Module 5?
+> - `gemini-2.0-flash-exp` (image editing)
+> - `imagen-3.0-capability-001` (image generation)
+> - Both?
 
 > [!NOTE]
-> **Currency**: All rates are in Indian Rupees (₹). Confirm if this is correct.
+> All cost rates are in **Indian Rupees (₹)**. Confirm if correct.
