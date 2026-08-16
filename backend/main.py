@@ -53,8 +53,8 @@ from routers.visualize import router as visualize_router
 app.include_router(visualize_router)
 
 
-# from routers.estimate import router as estimate_router
-# app.include_router(estimate_router)
+from routers.estimate import router as estimate_router
+app.include_router(estimate_router)
 
 # from routers.report import router as report_router
 # app.include_router(report_router)

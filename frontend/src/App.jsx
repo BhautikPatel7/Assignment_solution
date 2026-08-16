@@ -4,6 +4,8 @@ import SegmentPage   from './pages/SegmentPage';
 import MaterialPage  from './pages/MaterialPage';
 import VisualizePage from './pages/VisualizePage';
 
+import EstimatePage  from './pages/EstimatePage';
+
 /**
  * App.jsx — E2M root component
  *
@@ -12,6 +14,7 @@ import VisualizePage from './pages/VisualizePage';
  *  'segment'   → Module 2 — Segmentation + Brush Correction
  *  'materials' → Module 3 — Material Selection
  *  'visualize' → Module 4 — AI Visualization
+ *  'estimate'  → Module 5 — Cost Estimation
  */
 export default function App() {
   const [step,      setStep]      = useState('upload');
@@ -69,14 +72,11 @@ export default function App() {
   }
 
   if (step === 'estimate') {
-    // Placeholder — Module 5 coming next
     return (
-      <div style={{ color: '#f1f5f9', padding: 40, fontFamily: 'Inter,sans-serif' }}>
-        <h2>Module 5 — Cost Estimation (coming next)</h2>
-        <button onClick={handleClear} style={{ marginTop: 20, padding: '8px 20px', cursor: 'pointer' }}>
-          Start Over
-        </button>
-      </div>
+      <EstimatePage
+        session={session}
+        onClear={handleClear}
+      />
     );
   }
 

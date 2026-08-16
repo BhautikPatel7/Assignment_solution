@@ -163,9 +163,23 @@ async def segment_image(req: SegmentRequest):
 
     logger.info(f"[{session_id}] Segmentation done in {t}. Regions: {result.detected_regions}")
 
+    # ── Build region detail list (no mask_b64 in this sub-list to keep it tidy) ──
+    regions_out = [
+        {
+            "region_id":    r.region_id,
+            "label":        r.label,
+            "pixel_count":  r.pixel_count,
+            "coverage_pct": r.coverage_pct,
+            "bbox":         r.bounding_box,  # mapped to "bbox" for estimate.py
+            "color_rgb":    r.color_rgb,
+            "is_protected": r.is_protected,
+        }
+        for r in result.regions
+    ]
+
     # ── Persist segmentation metadata to session.json ───────────
     seg_metadata = {
-        "segmentation": {
+        "segmentation_data": {
             "status":            "done",
             "elapsed_seconds":   result.elapsed_seconds,
             "device_used":       result.device_used,
@@ -176,23 +190,10 @@ async def segment_image(req: SegmentRequest):
             "protected_regions": result.protected_regions,
             "region_coverage":   result.region_coverage,
             "masks_dir":         masks_dir,
+            "regions":           regions_out,
         }
     }
     update_session(session_id, seg_metadata)
-
-    # ── Build region detail list (no mask_b64 in this sub-list to keep it tidy) ──
-    regions_out = [
-        {
-            "region_id":    r.region_id,
-            "label":        r.label,
-            "pixel_count":  r.pixel_count,
-            "coverage_pct": r.coverage_pct,
-            "bounding_box": r.bounding_box,
-            "color_rgb":    r.color_rgb,
-            "is_protected": r.is_protected,
-        }
-        for r in result.regions
-    ]
 
     # ── Return full response ────────────────────────────────────
     return {

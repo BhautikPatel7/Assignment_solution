@@ -469,7 +469,7 @@ Body: {
 
 ---
 
-## Module 5 — AI Visualization (Gemini Image Generation)
+## Module 5 — AI Visualization (Gemini Image Generation) (currently not possible because limitation on no acess to gemini module.)
 
 **Purpose**: Generate photorealistic renovation image using Gemini.
 

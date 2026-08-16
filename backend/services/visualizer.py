@@ -144,50 +144,17 @@ def generate_visualization(
         PNG image bytes
     """
     client = InferenceClient(api_key=hf_token)
-
-    # Load composite image
+    # We are returning the composite image directly because the AI models
+    # (img2img or text2img) tend to alter the original house structure too much.
+    # The composite image already has the exact materials mapped to the exact
+    # regions using the segmentation masks.
+    
     if not os.path.exists(composite_path):
         raise FileNotFoundError(f"Composite image not found: {composite_path}")
 
-    composite_img = Image.open(composite_path).convert("RGB")
-    logger.info(f"[visualize] Composite loaded: {composite_img.size}")
+    logger.info(f"[visualize] Returning composite image directly as the visualization.")
+    
+    with open(composite_path, "rb") as f:
+        img_bytes = f.read()
 
-    # ── Stage 1: Try instruct-pix2pix img2img ─────────────────
-    try:
-        logger.info(f"[visualize] Trying img2img: {IMG2IMG_MODEL}")
-        result_img = client.image_to_image(
-            image=composite_img,
-            prompt=prompt,
-            negative_prompt=(
-                "blurry, low quality, distorted, ugly, bad architecture, "
-                "unrealistic, painting, cartoon, sketch, text, watermark"
-            ),
-            model=IMG2IMG_MODEL,
-        )
-        logger.info("[visualize] img2img succeeded")
-
-    except Exception as e:
-        logger.warning(f"[visualize] img2img failed ({e}), falling back to text2img")
-
-        # ── Stage 2: FLUX text-to-image fallback ──────────────
-        try:
-            logger.info(f"[visualize] Using text2img: {TEXT2IMG_MODEL}")
-            result_img = client.text_to_image(
-                prompt=prompt,
-                negative_prompt=(
-                    "blurry, low quality, distorted, ugly, cartoon, sketch, text"
-                ),
-                model=TEXT2IMG_MODEL,
-            )
-            logger.info("[visualize] text2img succeeded")
-
-        except Exception as e2:
-            logger.error(f"[visualize] Both methods failed: {e2}")
-            raise RuntimeError(f"Visualization generation failed: {e2}")
-
-    # Convert PIL → PNG bytes
-    buf = io.BytesIO()
-    result_img.save(buf, format="PNG")
-    buf.seek(0)
-    logger.info("[visualize] Image encoded to PNG bytes")
-    return buf.getvalue()
+    return img_bytes

@@ -238,20 +238,25 @@ export default function SegmentViewer({ session, data: initialData, onContinue }
                     <p className={styles.rcProtectNote}>Protected — won't be modified</p>
                   ) : (
                     /* ── Edit button — only for editable regions with mask data ── */
-                    <button
-                      id={`edit-region-${r.region_id}-btn`}
-                      className={styles.editBtn}
-                      onClick={() => setEditingRegion(r.region_id)}
-                      disabled={!canEdit}
-                      title={canEdit ? `Correct the ${meta.label} mask` : 'Run segmentation first'}
-                      style={{ '--region-color': rgbCss(color) }}
-                    >
-                      <svg width="11" height="11" viewBox="0 0 24 24" fill="none">
-                        <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                      Correct Mask
-                    </button>
+                    <div className={styles.editBtnWrapper}>
+                      <button
+                        id={`edit-region-${r.region_id}-btn`}
+                        className={styles.editBtn}
+                        onClick={() => setEditingRegion(r.region_id)}
+                        disabled={!canEdit}
+                        title={canEdit ? `Correct the ${meta.label} mask` : 'Run segmentation first'}
+                        style={{ '--region-color': rgbCss(color) }}
+                      >
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none">
+                          <path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        Correct Mask
+                      </button>
+                      <p className={styles.editBtnDesc}>
+                        Manually paint or erase parts of the AI-generated mask to fix selection errors.
+                      </p>
+                    </div>
                   )}
                 </div>
               );

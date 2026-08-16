@@ -104,6 +104,7 @@ realistically apply textures/colors/materials
 allow comparison between original and redesigned version
 
 5.5 Surface Area Estimation
+
 The system should estimate the approximate area of each building surface.
 This includes:
 wall surface area
@@ -116,6 +117,8 @@ The system may use:
 reference assumptions (e.g., standard door/window size)
 perspective estimation
 user input (optional measurements)
+
+
 5.6 Material Quantity Calculation
 Based on calculated surface areas, the system should compute:
 required material quantity
@@ -126,6 +129,8 @@ paint area in square feet
 number of tiles required
 stone cladding quantity
 railing length
+
+
 5.7 Cost Estimation
 The system should generate a detailed cost estimate using predefined rates.
 The estimate must include:
@@ -136,6 +141,8 @@ grand total
 The user should be able to:
 modify material rates
 view recalculated costs
+
+
 5.8 Report Generation
 The system should produce a downloadable report containing:
 original image

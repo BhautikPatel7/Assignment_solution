@@ -81,40 +81,20 @@ async def visualize(req: VisualizeRequest):
 
     logger.info(f"[{session_id}] Visualization requested — {len(material_selections)} regions")
 
-    # ── 2. Gemini Vision — describe the house ───────────────────
-    house_description = ""
-    try:
-        if image_path and os.path.exists(image_path):
-            with open(image_path, "rb") as f:
-                img_bytes = f.read()
-            img_b64 = base64.b64encode(img_bytes).decode("utf-8")
-
-            # Gemini returns raw text here, not JSON
-            # We call it slightly differently - use the raw text path
-            house_description = _call_gemini_text(img_b64, "image/png", GEMINI_HOUSE_PROMPT)
-            logger.info(f"[{session_id}] House description: {house_description[:80]}...")
-        else:
-            logger.warning(f"[{session_id}] Original image not found, skipping Gemini step")
-    except Exception as e:
-        logger.warning(f"[{session_id}] Gemini house description failed: {e}")
-        house_description = ""  # continue without it
-
-    # ── 3. Build prompt ──────────────────────────────────────────
-    prompt = build_prompt(material_selections, house_description)
-    logger.info(f"[{session_id}] Prompt built ({len(prompt)} chars)")
+    # Since we are no longer using the FLUX/instruct-pix2pix models (to avoid altering 
+    # the house structure), we don't need to call Gemini to describe the house,
+    # nor do we need to build an AI prompt.
+    
+    prompt = "N/A (Composite Image Used Directly)"
+    house_description = "N/A"
 
     # ── 4. Generate visualization ────────────────────────────────
-    if not HF_TOKEN:
-        raise HTTPException(
-            status_code=500,
-            detail="HF_TOKEN not configured. Add it to backend/.env"
-        )
-
+    # We simply read the composite image and use it as the visualization
     try:
         viz_bytes = generate_visualization(
             composite_path=composite_path,
             prompt=prompt,
-            hf_token=HF_TOKEN,
+            hf_token="", # No longer needed
         )
     except Exception as e:
         logger.error(f"[{session_id}] Visualization failed: {e}")
@@ -142,7 +122,6 @@ async def visualize(req: VisualizeRequest):
         "prompt_used":          prompt,
         "house_description":    house_description,
     }
-
 
 # ── GET /api/visualize/{session_id} ───────────────────────────
 @router.get("/api/visualize/{session_id}")

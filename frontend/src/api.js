@@ -122,3 +122,24 @@ export async function visualizeImage(sessionId) {
 
   return response.json();
 }
+
+/**
+ * Generate Cost Estimate — Module 5
+ * @param {string} sessionId
+ * @param {number} houseHeightFt (optional)
+ * @returns {Promise<object>} API response with metrics, breakdown, and summary
+ */
+export async function estimateCost(sessionId, houseHeightFt = 20.0) {
+  const response = await fetch(`${BASE_URL}/api/estimate`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId, house_height_ft: houseHeightFt }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `Cost estimation failed: ${response.status}`);
+  }
+
+  return response.json();
+}
