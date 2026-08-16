@@ -12,47 +12,17 @@ const LOADING_STEPS = [
   { icon: '🏠', text: 'Almost done…' },
 ];
 
-export default function VisualizePage({ session, segData, matData, onVisualizeDone, onClear }) {
-  const [status, setStatus]         = useState('loading'); // 'loading' | 'done' | 'error'
-  const [vizImg, setVizImg]         = useState(null);      // base64
+export default function VisualizePage({ session, segData, vizData, onProceedToEstimate, onClear }) {
+  const [status, setStatus]         = useState('done');
+  const [vizImg, setVizImg]         = useState(vizData?.visualization_image || null);
   const [promptUsed, setPromptUsed] = useState('');
   const [error, setError]           = useState('');
   const [loadStep, setLoadStep]     = useState(0);
-  const [sliderPos, setSliderPos]   = useState(50);        // before/after slider %
+  const [sliderPos, setSliderPos]   = useState(50);
+  const [isEstimating, setIsEstimating] = useState(false);
+  const [apiError, setApiError]     = useState('');
   const isDragging                  = useRef(false);
   const sliderRef                   = useRef(null);
-  const stepTimer                   = useRef(null);
-
-  // Cycle through loading steps
-  useEffect(() => {
-    if (status !== 'loading') return;
-    stepTimer.current = setInterval(() => {
-      setLoadStep(s => (s + 1) % LOADING_STEPS.length);
-    }, 4000);
-    return () => clearInterval(stepTimer.current);
-  }, [status]);
-
-  // Trigger visualization on mount
-  useEffect(() => {
-    let cancelled = false;
-    async function run() {
-      try {
-        const res = await visualizeImage(session.session_id);
-        if (cancelled) return;
-        setVizImg(res.visualization_image);
-        setPromptUsed(res.prompt_used || '');
-        setStatus('done');
-        clearInterval(stepTimer.current);
-      } catch (e) {
-        if (cancelled) return;
-        setError(e.message);
-        setStatus('error');
-        clearInterval(stepTimer.current);
-      }
-    }
-    run();
-    return () => { cancelled = true; };
-  }, [session.session_id]);
 
   // ── Before/After drag slider ───────────────────────────────
   const handleMouseDown = useCallback((e) => {
@@ -83,6 +53,20 @@ export default function VisualizePage({ session, segData, matData, onVisualizeDo
     };
   }, [handleMouseMove, handleMouseUp]);
 
+  const handleProceedClick = async () => {
+    setIsEstimating(true);
+    setApiError('');
+    try {
+      const { estimateCost } = await import('../api');
+      const res = await estimateCost(session.session_id);
+      onProceedToEstimate(res);
+    } catch (e) {
+      setApiError(e.message || 'Failed to estimate costs.');
+    } finally {
+      setIsEstimating(false);
+    }
+  };
+
   // Original image from segData
   const originalImg = segData?.original_image || null;
 
@@ -100,9 +84,9 @@ export default function VisualizePage({ session, segData, matData, onVisualizeDo
           <div className={styles.stepLine} />
           <StepDot n={3} label="Materials" done />
           <div className={styles.stepLine} />
-          <StepDot n={4} label="Visualize" active />
-          <div className={`${styles.stepLine} ${styles.stepLineDim}`} />
-          <StepDot n={5} label="Estimate" dim />
+          <StepDot n={4} label="Visualize" active={status === 'loading'} done={status === 'done'} />
+          <div className={`${styles.stepLine} ${status === 'done' ? '' : styles.stepLineDim}`} />
+          <StepDot n={5} label="Estimate" dim={status !== 'done'} />
         </div>
 
         {/* ── Loading state ── */}
@@ -142,15 +126,13 @@ export default function VisualizePage({ session, segData, matData, onVisualizeDo
         {status === 'error' && (
           <div className={styles.errorCard}>
             <span className={styles.errorIcon}>⚠️</span>
-            <h3 className={styles.errorTitle}>Visualization Failed</h3>
+            <h2>Visualization Failed</h2>
             <p className={styles.errorMsg}>{error}</p>
-            <button className={styles.retryBtn} onClick={() => window.location.reload()}>
-              ↺ Try Again
-            </button>
+            <button className={styles.retryBtn} onClick={() => window.location.reload()}>Retry Module</button>
           </div>
         )}
 
-        {/* ── Done state ── */}
+        {/* ── Done state (Before/After Slider) ── */}
         {status === 'done' && (
           <div className={styles.resultLayout}>
 
@@ -220,89 +202,69 @@ export default function VisualizePage({ session, segData, matData, onVisualizeDo
                   <a
                     href={`data:image/png;base64,${originalImg}`}
                     download="original_house.png"
-                    className={styles.downloadBtn}
+                    className={styles.dlLink}
                   >
-                    ⬇ Original
+                    Download Original
                   </a>
                 )}
                 {vizImg && (
                   <a
                     href={`data:image/png;base64,${vizImg}`}
-                    download="renovation_visualization.png"
-                    className={`${styles.downloadBtn} ${styles.downloadBtnPrimary}`}
+                    download="visualized_house.png"
+                    className={`${styles.dlLink} ${styles.dlLinkPrimary}`}
                   >
-                    ⬇ Download Visualization
+                    Download Render
                   </a>
                 )}
               </div>
             </div>
 
-            {/* ── Right: Info panel ── */}
-            <div className={styles.infoPanel}>
-
-              {/* Materials applied */}
-              <div className={styles.infoCard}>
-                <h4 className={styles.infoTitle}>
-                  <span>🎨</span> Materials Applied
-                </h4>
+            {/* ── Right: Meta info ── */}
+            <div className={styles.metaPanel}>
+              
+              <div className={styles.materialSummaryCard}>
+                <h3 className={styles.cardTitle}>Applied Materials</h3>
                 <div className={styles.materialList}>
-                  {Object.entries(matData || {}).map(([rid, sel]) => {
-                    const cat = MATERIAL_CATALOG[rid];
-                    if (!cat) return null;
-                    const isColor = isPaint(sel.value);
-                    const matName = isColor
-                      ? cat.paints.find(p => p.hex === sel.value)?.name || 'Paint'
-                      : cat.textures.find(t => t.file === sel.value)?.name || 'Texture';
+                  {Object.entries(vizData?.selections || {}).map(([rid, sel]) => {
+                    const label = rid.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
                     return (
-                      <div key={rid} className={styles.materialRow}>
-                        <span className={styles.materialIcon}>{cat.icon}</span>
-                        <div className={styles.materialInfo}>
-                          <span className={styles.materialRegion}>{cat.label}</span>
-                          <span className={styles.materialName}>
-                            {isColor && (
-                              <span className={styles.colorDot} style={{ background: sel.value }} />
-                            )}
-                            {matName}
-                          </span>
+                      <div key={rid} className={styles.materialItem}>
+                        <div className={styles.matRegion}>{label}</div>
+                        <div className={styles.matValue}>
+                          {isPaint(sel.value) ? (
+                            <><span className={styles.colorDot} style={{ background: sel.value }}></span> Paint</>
+                          ) : (
+                            <>🪨 Texture</>
+                          )}
                         </div>
-                        <span className={`${styles.materialType} ${isColor ? styles.typeColor : styles.typeTexture}`}>
-                          {isColor ? 'Paint' : 'Texture'}
-                        </span>
                       </div>
                     );
                   })}
                 </div>
               </div>
 
-              {/* AI Prompt */}
-              {promptUsed && (
-                <div className={styles.infoCard}>
-                  <h4 className={styles.infoTitle}>
-                    <span>🤖</span> AI Prompt Used
-                  </h4>
-                  <p className={styles.promptText}>{promptUsed}</p>
-                </div>
-              )}
-
-              {/* Proceed CTA */}
-              <div className={styles.cta}>
-                <button
-                  id="proceed-to-estimate-btn"
-                  className={styles.ctaBtn}
-                  onClick={() => onVisualizeDone({ visualization_image: vizImg, prompt: promptUsed })}
+              <div className={styles.ctaCard}>
+                <h3 className={styles.cardTitle}>Next Step</h3>
+                <p className={styles.cardDesc}>
+                  Now that you've visualized your new exterior, generate a detailed cost estimate based on real-world measurements derived from this image.
+                </p>
+                {apiError && <div style={{ color: '#fca5a5', marginBottom: 10, fontSize: 13 }}>{apiError}</div>}
+                <button 
+                  className={styles.ctaBtn} 
+                  onClick={handleProceedClick}
+                  disabled={isEstimating}
                 >
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                    <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                  Proceed to Cost Estimation
-                  <span className={styles.ctaBadge}>Module 5 →</span>
+                  {isEstimating ? 'Calculating Estimate...' : 'Proceed to Cost Estimation'}
+                  {!isEstimating && (
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                      <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                  )}
                 </button>
               </div>
             </div>
-
           </div>
         )}
-
       </main>
     </div>
   );

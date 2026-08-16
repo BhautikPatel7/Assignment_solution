@@ -3,9 +3,9 @@ import Header from '../components/Header';
 import { estimateCost } from '../api';
 import styles from './EstimatePage.module.css';
 
-export default function EstimatePage({ session, onClear }) {
-  const [status, setStatus] = useState('loading'); // 'loading' | 'done' | 'error'
-  const [data, setData] = useState(null);
+export default function EstimatePage({ session, segData, vizData, estData, onClear }) {
+  const [status, setStatus] = useState('done'); // since we got it from VisualizePage
+  const [data, setData] = useState(estData?.data || null);
   const [error, setError] = useState('');
   const [houseHeight, setHouseHeight] = useState(20);
 
@@ -21,10 +21,6 @@ export default function EstimatePage({ session, onClear }) {
       setStatus('error');
     }
   };
-
-  useEffect(() => {
-    fetchEstimate(houseHeight);
-  }, [session.session_id]); // Only run on mount, height changes handled by button
 
   const handleRecalculate = (e) => {
     e.preventDefault();
@@ -177,7 +173,14 @@ export default function EstimatePage({ session, onClear }) {
                     </div>
                   </div>
 
-                  <button className={styles.downloadReportBtn}>
+                  <button 
+                    className={styles.downloadReportBtn}
+                    onClick={() => {
+                      import('../utils/pdfGenerator').then(({ generateReportPDF }) => {
+                        generateReportPDF({ session, segData, vizData, estData: { data } });
+                      });
+                    }}
+                  >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
                       <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>

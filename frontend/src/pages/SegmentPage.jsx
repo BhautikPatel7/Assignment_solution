@@ -5,36 +5,10 @@ import SegmentLoading from '../components/SegmentLoading';
 import { segmentImage } from '../api';
 import styles from './SegmentPage.module.css';
 
-export default function SegmentPage({ session, segData, onSegmentDone, onProceedToMaterials, onClear }) {
-  const [isLoading, setIsLoading] = useState(!segData);
-  const [data, setData]           = useState(segData);   // holds M2 result once done
-  const [error, setError]         = useState('');
-  const [elapsed, setElapsed]     = useState(0);         // live elapsed timer (seconds)
-
-  // Auto-run segmentation on mount if no cached result
-  useEffect(() => {
-    if (segData) return; // already have results
-
-    let startTime = Date.now();
-    const tick = setInterval(() => {
-      setElapsed(Math.floor((Date.now() - startTime) / 1000));
-    }, 1000);
-
-    segmentImage(session.session_id)
-      .then((res) => {
-        clearInterval(tick);
-        setData(res);
-        onSegmentDone(res);
-        setIsLoading(false);
-      })
-      .catch((err) => {
-        clearInterval(tick);
-        setError(err.message || 'Segmentation failed.');
-        setIsLoading(false);
-      });
-
-    return () => clearInterval(tick);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+export default function SegmentPage({ session, segData, onProceedToMaterials, onClear }) {
+  const [data, setData] = useState(segData);
+  const error = '';
+  const isLoading = false;
 
   return (
     <div className={styles.page}>

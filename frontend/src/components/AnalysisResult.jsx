@@ -18,7 +18,7 @@ const QUALITY_CONFIG = {
 };
 
 /* ── Success Result ── */
-function SuccessPanel({ session, onProceedToSegment }) {
+function SuccessPanel({ session, onProceedToSegment, isSegmenting }) {
   const { session_id, analysis } = session;
   const qCfg = QUALITY_CONFIG[analysis.image_quality] || { label: analysis.image_quality, cls: 'acceptable' };
 
@@ -130,18 +130,20 @@ function SuccessPanel({ session, onProceedToSegment }) {
         </div>
       )}
 
-      {/* Next Step CTA */}
+      {/* Call to Action */}
       <div className={styles.cta}>
         <button
           id="proceed-to-segment-btn"
-          className={styles.ctaBtn}
+          className={styles.proceedBtn}
           onClick={onProceedToSegment}
+          disabled={isSegmenting}
         >
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          Proceed to Segmentation
-          <span className={styles.ctaBadge}>Module 2 →</span>
+          {isSegmenting ? 'Running AI Segmentation... (takes ~10s)' : 'Proceed to Segmentation'}
+          {!isSegmenting && (
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <path d="M5 12h14m-7-7l7 7-7 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          )}
         </button>
       </div>
     </div>
@@ -230,8 +232,8 @@ function RejectionPanel({ rejected, onRetry }) {
 }
 
 /* ── Main Export ── */
-export default function AnalysisResult({ session, rejected, onRetry, onProceedToSegment }) {
-  if (session)  return <SuccessPanel  session={session} onProceedToSegment={onProceedToSegment} />;
+export default function AnalysisResult({ session, rejected, onRetry, onProceedToSegment, isSegmenting }) {
+  if (session)  return <SuccessPanel  session={session} onProceedToSegment={onProceedToSegment} isSegmenting={isSegmenting} />;
   if (rejected) return <RejectionPanel rejected={rejected} onRetry={onRetry} />;
   return null;
 }

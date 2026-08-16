@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import Header from '../components/Header';
 import { MATERIAL_CATALOG, isPaint, textureUrl } from '../constants/materials';
-import { compositeImage } from '../api';
+import { compositeImage, visualizeImage } from '../api';
 import styles from './MaterialPage.module.css';
 
 const EDITABLE_REGIONS = ['main_wall', 'pillar', 'balcony', 'boundary_wall'];
 
-export default function MaterialPage({ session, segData, onMaterialsDone, onClear }) {
+export default function MaterialPage({ session, segData, onProceedToVisualize, onClear }) {
   // Active region in the picker
   const [activeRegion, setActiveRegion]   = useState('main_wall');
   // Tab: 'paint' | 'texture'
@@ -17,6 +17,7 @@ export default function MaterialPage({ session, segData, onMaterialsDone, onClea
   const [previewImg, setPreviewImg]       = useState(segData?.original_image || null);
   const [compositing, setCompositing]     = useState(false);
   const [compositeErr, setCompositeErr]   = useState('');
+  const [isVisualizing, setIsVisualizing] = useState(false);
 
   // Debounce composite calls
   const debounceRef = useRef(null);
@@ -55,6 +56,23 @@ export default function MaterialPage({ session, segData, onMaterialsDone, onClea
       }
     }, 300);
   }, [session.session_id]);
+
+  /* ── Handle Proceed CTA ── */
+  const handleProceedClick = async () => {
+    setIsVisualizing(true);
+    setCompositeErr('');
+    try {
+      // Force a composite save just in case, then visualize
+      await compositeImage(session.session_id, selections);
+      const res = await visualizeImage(session.session_id);
+      // Pass both selections and viz result up
+      onProceedToVisualize({ selections, ...res });
+    } catch (e) {
+      setCompositeErr(e.message || 'Failed to prepare visualization.');
+    } finally {
+      setIsVisualizing(false);
+    }
+  };
 
   /* ── Handle material pick ── */
   function selectMaterial(type, value) {
@@ -327,16 +345,24 @@ export default function MaterialPage({ session, segData, onMaterialsDone, onClea
 
             {/* Proceed CTA */}
             <div className={styles.cta}>
+              {compositeErr && <div className={styles.errTxt}>{compositeErr}</div>}
               <button
                 id="proceed-to-visualize-btn"
                 className={styles.ctaBtn}
-                onClick={() => onMaterialsDone(selections)}
+                onClick={handleProceedClick}
+                disabled={isVisualizing || compositing}
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                  <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                </svg>
-                Generate AI Visualization
-                <span className={styles.ctaBadge}>Module 4 →</span>
+                {isVisualizing ? (
+                  'Saving & Generating...'
+                ) : (
+                  <>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
+                      <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </svg>
+                    Confirm Materials & Generate AI Visualization
+                    <span className={styles.ctaBadge}>Module 4 →</span>
+                  </>
+                )}
               </button>
             </div>
 

@@ -22,13 +22,28 @@ export default function App() {
   const [segData,   setSegData]   = useState(null);
   const [matData,   setMatData]   = useState(null);
   const [vizData,   setVizData]   = useState(null);
+  const [estData,   setEstData]   = useState(null);
 
   const handleAnalyzeDone        = (s)    => setSession(s);
-  const handleProceedToSegment   = ()     => setStep('segment');
-  const handleSegmentDone        = (data) => setSegData(data);
-  const handleProceedToMaterials = ()     => setStep('materials');
-  const handleMaterialsDone      = (sel)  => { setMatData(sel); setStep('visualize'); };
-  const handleVisualizeDone      = (viz)  => { setVizData(viz); setStep('estimate'); };
+  
+  const handleProceedToSegment   = (data) => { 
+    setSegData(data); 
+    setStep('segment'); 
+  };
+  
+  const handleProceedToMaterials = ()     => {
+    setStep('materials'); 
+  };
+  
+  const handleProceedToVisualize = (viz)  => { 
+    setVizData(viz);
+    setStep('visualize'); 
+  };
+  
+  const handleProceedToEstimate  = (est)  => { 
+    setEstData(est);
+    setStep('estimate'); 
+  };
 
   const handleClear = () => {
     sessionStorage.clear();
@@ -41,7 +56,6 @@ export default function App() {
       <SegmentPage
         session={session}
         segData={segData}
-        onSegmentDone={handleSegmentDone}
         onProceedToMaterials={handleProceedToMaterials}
         onClear={handleClear}
       />
@@ -53,7 +67,7 @@ export default function App() {
       <MaterialPage
         session={session}
         segData={segData}
-        onMaterialsDone={handleMaterialsDone}
+        onProceedToVisualize={handleProceedToVisualize}
         onClear={handleClear}
       />
     );
@@ -64,8 +78,8 @@ export default function App() {
       <VisualizePage
         session={session}
         segData={segData}
-        matData={matData}
-        onVisualizeDone={handleVisualizeDone}
+        vizData={vizData}
+        onProceedToEstimate={handleProceedToEstimate}
         onClear={handleClear}
       />
     );
@@ -75,6 +89,9 @@ export default function App() {
     return (
       <EstimatePage
         session={session}
+        segData={segData}
+        vizData={vizData}
+        estData={estData}
         onClear={handleClear}
       />
     );

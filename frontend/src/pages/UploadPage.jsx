@@ -3,12 +3,13 @@ import Header from '../components/Header';
 import HeroSection from '../components/HeroSection';
 import ImageUploader from '../components/ImageUploader';
 import AnalysisResult from '../components/AnalysisResult';
-import { analyzeImage } from '../api';
+import { analyzeImage, segmentImage } from '../api';
 import styles from './UploadPage.module.css';
 
 export default function UploadPage({ session, onAnalyzeDone, onProceedToSegment, onClear }) {
   const [rejected, setRejected] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSegmenting, setIsSegmenting] = useState(false);
   const [apiError, setApiError]   = useState('');
 
   const handleAnalyze = async (file) => {
@@ -32,6 +33,19 @@ export default function UploadPage({ session, onAnalyzeDone, onProceedToSegment,
       setApiError(err.message || 'Something went wrong. Is the backend running?');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleProceedClick = async () => {
+    setIsSegmenting(true);
+    setApiError('');
+    try {
+      const res = await segmentImage(session.session_id);
+      onProceedToSegment(res);
+    } catch (err) {
+      setApiError(err.message || 'Segmentation failed.');
+    } finally {
+      setIsSegmenting(false);
     }
   };
 
@@ -91,7 +105,8 @@ export default function UploadPage({ session, onAnalyzeDone, onProceedToSegment,
               session={session}
               rejected={rejected}
               onRetry={handleRetry}
-              onProceedToSegment={onProceedToSegment}
+              onProceedToSegment={handleProceedClick}
+              isSegmenting={isSegmenting}
             />
           </section>
         )}
