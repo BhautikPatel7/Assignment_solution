@@ -10,6 +10,9 @@ from dotenv import load_dotenv
 # Load .env from the backend directory
 load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
 
+# Base directory of the backend package (directory containing this file)
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 
 # ─────────────────────────────────────────────
 #  Settings — read once at startup

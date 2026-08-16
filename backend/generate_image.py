@@ -1,125 +1,95 @@
 import os
-import base64
 from pathlib import Path
 
 from dotenv import load_dotenv
-from google import genai
+from huggingface_hub import InferenceClient
 
 
-MODEL_NAME = "gemini-3.1-flash-image"
-
-OUTPUT_DIR = Path("image")
-OUTPUT_FILE = OUTPUT_DIR / "generated_house.jpg"
-
-PROMPT = """
-Create a photorealistic architectural visualization of a modern
-Indian house exterior.
-
-The house should have:
-
-- modern contemporary architecture
-- white and dark gray exterior walls
-- large glass windows
-- modern balcony with glass railing
-- warm exterior lighting
-- landscaped front yard
-- realistic construction materials
-- realistic shadows
-- professional architectural photography
-
-Show the complete front elevation of the house.
-
-No people.
-No text.
-"""
-
-
-# ------------------------------------------------------------
+# --------------------------------------------------
 # Load .env
-# ------------------------------------------------------------
+# --------------------------------------------------
 
 load_dotenv()
 
-api_key = os.getenv("GEMINI_API_KEY")
+HF_TOKEN = os.getenv("HF_TOKEN")
 
-if not api_key:
+if not HF_TOKEN:
     raise RuntimeError(
-        "GEMINI_API_KEY not found in .env file."
+        "HF_TOKEN not found in .env"
     )
 
 
-# ------------------------------------------------------------
-# Gemini client
-# ------------------------------------------------------------
+# --------------------------------------------------
+# Configuration
+# --------------------------------------------------
 
-client = genai.Client(api_key=api_key)
+MODEL = "black-forest-labs/FLUX.1-schnell"
+
+PROMPT = """
+A photorealistic modern Indian house exterior,
+two-story contemporary architecture,
+white walls with dark gray accents,
+large glass windows,
+modern balcony with glass railing,
+warm exterior lighting,
+beautiful landscaping,
+professional architectural photography,
+front elevation,
+no people,
+no text
+"""
+
+OUTPUT_DIR = Path("image")
+OUTPUT_FILE = OUTPUT_DIR / "house.png"
 
 
-# ------------------------------------------------------------
+# --------------------------------------------------
 # Create output directory
-# ------------------------------------------------------------
+# --------------------------------------------------
 
-OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+OUTPUT_DIR.mkdir(
+    parents=True,
+    exist_ok=True
+)
 
 
-# ------------------------------------------------------------
+# --------------------------------------------------
+# Create Hugging Face client
+# --------------------------------------------------
+
+client = InferenceClient(
+    provider="auto",
+    api_key=HF_TOKEN
+)
+
+
+# --------------------------------------------------
 # Generate image
-# ------------------------------------------------------------
+# --------------------------------------------------
 
 print("Generating image...")
-print(f"Model: {MODEL_NAME}")
+print(f"Model: {MODEL}")
 
 try:
 
-    interaction = client.interactions.create(
-        model=MODEL_NAME,
-        input=PROMPT,
-        response_format={
-            "type": "image",
-            "mime_type": "image/jpeg",
-            "aspect_ratio": "16:9",
-            "image_size": "1K",
-        },
+    image = client.text_to_image(
+        prompt=PROMPT,
+        model=MODEL
     )
 
 except Exception as e:
 
-    print("\nFailed to generate image.")
+    print("Image generation failed.")
     print(f"Error: {e}")
     raise
 
 
-# ------------------------------------------------------------
-# Check response
-# ------------------------------------------------------------
+# --------------------------------------------------
+# Save
+# --------------------------------------------------
 
-if not interaction.output_image:
+image.save(OUTPUT_FILE)
 
-    print("Gemini did not return an image.")
-
-    if interaction.output_text:
-        print("Model response:")
-        print(interaction.output_text)
-
-    raise RuntimeError("No image returned.")
-
-
-# ------------------------------------------------------------
-# Decode Base64
-# ------------------------------------------------------------
-
-image_bytes = base64.b64decode(
-    interaction.output_image.data
-)
-
-
-# ------------------------------------------------------------
-# Save image
-# ------------------------------------------------------------
-
-with open(OUTPUT_FILE, "wb") as f:
-    f.write(image_bytes)
-
-
-print("\nImage generated successfully!")
+print()
+print("Image generated successfully!")
 print(f"Saved to: {OUTPUT_FILE.resolve()}")

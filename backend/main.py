@@ -3,13 +3,16 @@ main.py — FastAPI application entry point.
 Starts the server with Uvicorn on port 8004.
 """
 
+import os
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
-from config import PORT, ENV, logger
-from routers.analyze  import router as analyze_router
-from routers.segment  import router as segment_router
+from config import PORT, ENV, logger, BASE_DIR
+from routers.analyze   import router as analyze_router
+from routers.segment   import router as segment_router
+from routers.composite import router as composite_router
 
 # ─────────────────────────────────────────────
 #  App Setup
@@ -31,23 +34,31 @@ app.add_middleware(
 )
 
 # ─────────────────────────────────────────────
+#  Static Files — texture swatches
+# ─────────────────────────────────────────────
+
+TEXTURES_DIR = os.path.join(BASE_DIR, "static", "textures")
+os.makedirs(TEXTURES_DIR, exist_ok=True)
+app.mount("/static/textures", StaticFiles(directory=TEXTURES_DIR), name="textures")
+
+# ─────────────────────────────────────────────
 #  Routers
 # ─────────────────────────────────────────────
 
 app.include_router(analyze_router)
 app.include_router(segment_router)
+app.include_router(composite_router)
 
-# from routers.composite import router as composite_router
-# app.include_router(composite_router)
+from routers.visualize import router as visualize_router
+app.include_router(visualize_router)
 
-# from routers.visualize import router as visualize_router
-# app.include_router(visualize_router)
 
 # from routers.estimate import router as estimate_router
 # app.include_router(estimate_router)
 
 # from routers.report import router as report_router
 # app.include_router(report_router)
+
 
 
 # ─────────────────────────────────────────────

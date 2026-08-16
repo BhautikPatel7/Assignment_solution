@@ -77,3 +77,48 @@ export async function updateMask(sessionId, regionId, maskB64) {
 
   return response.json();
 }
+
+/**
+ * Apply material selections to house image — Module 4
+ * Fast (~0.5-1s). Called live on every material change.
+ *
+ * @param {string} sessionId
+ * @param {Object} selections  — { region_id: { type: "paint"|"texture", value: hex|filename } }
+ * @returns {Promise<object>}  — { composite_image: base64, regions_applied: [] }
+ */
+export async function compositeImage(sessionId, selections) {
+  const response = await fetch(`${BASE_URL}/api/composite`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId, selections }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `Composite failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Generate AI visualization of the renovated house — Module 4
+ * Takes ~20-30 seconds. Uses HuggingFace img2img + Gemini Vision.
+ *
+ * @param {string} sessionId
+ * @returns {Promise<object>} { visualization_image: base64, prompt_used, house_description }
+ */
+export async function visualizeImage(sessionId) {
+  const response = await fetch(`${BASE_URL}/api/visualize`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ session_id: sessionId }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `Visualization failed: ${response.status}`);
+  }
+
+  return response.json();
+}

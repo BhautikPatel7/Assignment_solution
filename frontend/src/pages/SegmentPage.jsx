@@ -5,7 +5,7 @@ import SegmentLoading from '../components/SegmentLoading';
 import { segmentImage } from '../api';
 import styles from './SegmentPage.module.css';
 
-export default function SegmentPage({ session, segData, onSegmentDone, onClear }) {
+export default function SegmentPage({ session, segData, onSegmentDone, onProceedToMaterials, onClear }) {
   const [isLoading, setIsLoading] = useState(!segData);
   const [data, setData]           = useState(segData);   // holds M2 result once done
   const [error, setError]         = useState('');
@@ -80,7 +80,7 @@ export default function SegmentPage({ session, segData, onSegmentDone, onClear }
           <SegmentViewer
             session={session}
             data={data}
-            onContinue={() => alert('Module 3 — Material Selection coming next!')}
+            onContinue={onProceedToMaterials}
           />
         )}
       </main>
