@@ -26,6 +26,15 @@ from utils import load_session, session_exists
 
 router = APIRouter()
 
+def format_material_name(val: str) -> str:
+    if not val: return ""
+    if val.startswith('#'):
+        return f"Paint ({val.upper()})"
+    if val.endswith('.png'):
+        name = val.replace('.png', '').replace('_', ' ')
+        return name.title()
+    return val.title()
+
 def create_pdf(session_id: str, session: dict) -> BytesIO:
     buffer = BytesIO()
     doc = SimpleDocTemplate(
@@ -89,7 +98,7 @@ def create_pdf(session_id: str, session: dict) -> BytesIO:
         mat_data = [["Region", "Material"]]
         for region, sel in selections.items():
             region_name = region.replace('_', ' ').title()
-            val = sel.get("value", "")
+            val = format_material_name(sel.get("value", ""))
             mat_data.append([region_name, val])
             
         mat_table = Table(mat_data, colWidths=[200, 300])
@@ -115,7 +124,7 @@ def create_pdf(session_id: str, session: dict) -> BytesIO:
         
         for item in breakdown:
             region = item.get("region", "").replace('_', ' ').title()
-            material = item.get("material", "")
+            material = format_material_name(item.get("material", ""))
             qty = f"{item.get('quantity_needed', 0):.1f} {item.get('unit', '')}"
             m_cost = f"INR {item.get('material_cost', 0):.0f}"
             l_cost = f"INR {item.get('labor_cost', 0):.0f}"
