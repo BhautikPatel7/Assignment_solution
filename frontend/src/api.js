@@ -3,7 +3,7 @@
  * Backend runs on http://localhost:8004
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || '';
+export const BASE_URL = import.meta.env.VITE_API_URL || '';
 
 /**
  * Analyze a house image — Module 1

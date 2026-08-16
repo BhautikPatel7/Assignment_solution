@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import Header from '../components/Header';
-import { estimateCost } from '../api';
+import { estimateCost, BASE_URL } from '../api';
 import styles from './EstimatePage.module.css';
 
 export default function EstimatePage({ session, segData, vizData, estData, onClear }) {
@@ -176,9 +176,7 @@ export default function EstimatePage({ session, segData, vizData, estData, onCle
                   <button 
                     className={styles.downloadReportBtn}
                     onClick={() => {
-                      import('../utils/pdfGenerator').then(({ generateReportPDF }) => {
-                        generateReportPDF({ session, segData, vizData, estData: { data } });
-                      });
+                      window.open(`${BASE_URL}/api/report/${session.session_id}`, '_blank');
                     }}
                   >
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
