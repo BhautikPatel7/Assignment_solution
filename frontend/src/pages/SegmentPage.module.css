@@ -1,0 +1,149 @@
+/* SegmentPage.module.css */
+
+.page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.main {
+  flex: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 0 24px 80px;
+}
+
+/* ── Step Bar ── */
+.stepBar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 28px 0 36px;
+}
+
+.step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.stepNum {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  transition: all 0.3s;
+}
+
+.stepLabel {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  white-space: nowrap;
+  transition: color 0.3s;
+}
+
+.stepDone .stepNum {
+  background: rgba(16,185,129,0.15);
+  border-color: rgba(16,185,129,0.4);
+  color: var(--success);
+}
+.stepDone .stepLabel { color: var(--text-secondary); }
+
+.stepActive .stepNum {
+  background: var(--primary-glow);
+  border-color: var(--primary);
+  color: var(--primary-light);
+  box-shadow: 0 0 12px var(--primary-glow);
+  animation: pulse 2s ease-in-out infinite;
+}
+.stepActive .stepLabel { color: var(--text-primary); }
+
+.stepDim .stepNum { opacity: 0.35; }
+.stepDim .stepLabel { opacity: 0.35; }
+
+.stepLine {
+  flex: 1;
+  height: 1px;
+  background: var(--border-hover);
+  margin: 0 12px;
+  min-width: 20px;
+}
+
+.stepLineDim {
+  background: var(--border);
+  opacity: 0.5;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 8px var(--primary-glow); }
+  50%       { box-shadow: 0 0 20px rgba(99,102,241,0.5); }
+}
+
+/* ── Error Card ── */
+.errorCard {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 24px;
+  background: rgba(239,68,68,0.07);
+  border: 1px solid rgba(239,68,68,0.25);
+  border-radius: var(--radius-lg);
+  animation: fadeUp 0.4s ease both;
+}
+
+.errorIcon {
+  width: 44px;
+  height: 44px;
+  background: rgba(239,68,68,0.12);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--danger);
+  flex-shrink: 0;
+}
+
+.errorTitle {
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 4px;
+}
+
+.errorMsg {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.retryBtn {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 10px 20px;
+  background: rgba(239,68,68,0.15);
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: var(--radius-md);
+  color: #fca5a5;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.retryBtn:hover { background: rgba(239,68,68,0.25); }
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
+}

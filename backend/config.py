@@ -17,7 +17,7 @@ load_dotenv(dotenv_path=os.path.join(os.path.dirname(__file__), ".env"))
 GOOGLE_CLOUD_PROJECT       = os.getenv("GOOGLE_CLOUD_PROJECT", "")
 GOOGLE_APPLICATION_CREDENTIALS = os.getenv("GOOGLE_APPLICATION_CREDENTIALS", "")
 VERTEX_LOCATION            = os.getenv("VERTEX_LOCATION", "us-central1")
-GEMINI_MODEL_VISION        = os.getenv("GEMINI_MODEL_VISION", "gemini-2.5-pro-preview-06-05")
+GEMINI_MODEL_VISION        = os.getenv("GEMINI_MODEL_VISION", "gemini-3.1-pro-preview")
 
 PORT = int(os.getenv("PORT", 8004))
 ENV  = os.getenv("ENV", "development")

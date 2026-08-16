@@ -8,7 +8,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from config import PORT, ENV, logger
-from routers.analyze import router as analyze_router
+from routers.analyze  import router as analyze_router
+from routers.segment  import router as segment_router
 
 # ─────────────────────────────────────────────
 #  App Setup
@@ -34,10 +35,7 @@ app.add_middleware(
 # ─────────────────────────────────────────────
 
 app.include_router(analyze_router)
-
-# Future modules — uncomment as they are built:
-# from routers.segment import router as segment_router
-# app.include_router(segment_router)
+app.include_router(segment_router)
 
 # from routers.composite import router as composite_router
 # app.include_router(composite_router)

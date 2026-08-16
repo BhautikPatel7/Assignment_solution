@@ -188,3 +188,4 @@ model-choir-436813-m8-b86cfdc682b0.json
 *.pt
 *.safetensors
 /test_masks
+temp

@@ -48,10 +48,10 @@ const features = [
 export default function HeroSection() {
   return (
     <section className={styles.hero}>
-      <div className={styles.badge}>
+      {/* <div className={styles.badge}>
         <span className={styles.badgeDot} />
         Powered by Gemini Vision AI
-      </div>
+      </div> */}
 
       <h1 className={styles.headline}>
         Transform Your Home's

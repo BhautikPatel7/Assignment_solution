@@ -4,7 +4,7 @@ import styles from './ImageUploader.module.css';
 const ACCEPTED_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
 const MAX_SIZE_MB = 20;
 
-export default function ImageUploader({ onSubmit, isLoading }) {
+export default function ImageUploader({ onSubmit, isLoading, analysisComplete }) {
   const [dragOver, setDragOver]     = useState(false);
   const [preview,  setPreview]      = useState(null);
   const [file,     setFile]         = useState(null);
@@ -156,14 +156,22 @@ export default function ImageUploader({ onSubmit, isLoading }) {
       {/* Action Button */}
       <button
         id="analyze-btn"
-        className={`${styles.analyzeBtn} ${!file || isLoading ? styles.disabled : ''}`}
+        className={`${styles.analyzeBtn} ${(!file || isLoading || analysisComplete) ? styles.disabled : ''}`}
         onClick={handleAnalyze}
-        disabled={!file || isLoading}
+        disabled={!file || isLoading || analysisComplete}
       >
         {isLoading ? (
           <>
             <span className={styles.spinner} />
             Analyzing with Gemini…
+          </>
+        ) : analysisComplete ? (
+          <>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+              <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
+              <polyline points="9,12 11,14 15,10" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Analysis Complete
           </>
         ) : (
           <>
