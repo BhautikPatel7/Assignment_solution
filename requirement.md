@@ -62,6 +62,8 @@ The system should:
 extract clear usable views
 reject extremely low-quality input
 guide the user if the image is not usable
+
+
 5.2 Exterior Structure Identification
 After upload, the system should identify major structural components of the building such as:
 main walls
@@ -75,6 +77,8 @@ The system should create a mapped representation of the building surface.
 The user should be able to:
 review the detected regions
 adjust or correct areas if necessary
+
+
 5.3 Design & Material Selection
 The platform should provide a material catalog.
 Users must be able to apply different materials to different parts of the house.
@@ -90,6 +94,7 @@ The system should allow:
 applying different materials to different sections
 previewing multiple combinations
 switching between designs
+
 5.4 Renovation Visualization
 The system must generate a visual output showing:
 the user’s actual house redesigned with the selected materials.
@@ -97,6 +102,7 @@ The output should:
 preserve the original building structure
 realistically apply textures/colors/materials
 allow comparison between original and redesigned version
+
 5.5 Surface Area Estimation
 The system should estimate the approximate area of each building surface.
 This includes:

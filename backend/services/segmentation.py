@@ -526,25 +526,41 @@ def _build_overlay(
     colors: Dict[str, tuple],
     alpha: float = 0.45,
 ) -> np.ndarray:
-    """Blend colored region masks over the original image."""
+    """Blend colored region masks over the original image.
+
+    Robust to masks that come from the segmentation pipeline (bool, shape H×W),
+    masks reloaded from grayscale PNG (uint8, shape H×W), or any masks with a
+    spurious trailing channel dimension (H×W×1) produced by some PNG decoders.
+    """
     overlay = image_bgr.copy().astype(np.float64)
 
     # Draw in priority order (lowest first so higher-priority draws on top)
     sorted_regions = sorted(region_masks.keys(), key=lambda r: MASK_PRIORITY.get(r, 0))
 
     for rid in sorted_regions:
-        mask_bool = region_masks[rid]
-        color_rgb = colors.get(rid, (200, 200, 200))
-        # BGR for OpenCV
-        color_bgr = color_rgb[::-1]
+        raw_mask = region_masks[rid]
 
-        colored       = np.zeros_like(image_bgr, dtype=np.float64)
-        colored[:]    = color_bgr
-        mask_3d       = np.stack([mask_bool] * 3, axis=2)
-        overlay       = np.where(mask_3d, overlay * (1 - alpha) + colored * alpha, overlay)
+        # ── Normalise to 2-D boolean (H, W) ────────────────────────
+        # squeeze removes any trailing dimension of size 1 that some
+        # cv2.imread / imencode round-trips may add (e.g. H×W×1).
+        mask_2d = np.squeeze(raw_mask).astype(bool)
+        if mask_2d.ndim != 2:
+            # If somehow still wrong shape, skip this region gracefully
+            logger.warning(f"_build_overlay: skipping {rid} — unexpected mask shape {raw_mask.shape}")
+            continue
+
+        color_rgb = colors.get(rid, (200, 200, 200))
+        color_bgr = color_rgb[::-1]           # RGB → BGR for OpenCV
+
+        colored    = np.zeros_like(image_bgr, dtype=np.float64)
+        colored[:] = color_bgr
+
+        # Expand to (H, W, 1) then broadcast to (H, W, 3) — avoids np.stack issues
+        mask_3d = mask_2d[:, :, np.newaxis]   # shape (H, W, 1) → broadcasts to (H, W, 3)
+        overlay = np.where(mask_3d, overlay * (1 - alpha) + colored * alpha, overlay)
 
         # Label text at bounding box top-left
-        ys, xs = np.where(mask_bool)
+        ys, xs = np.where(mask_2d)
         if len(ys) > 0:
             x1, y1 = int(xs.min()), int(ys.min())
             label  = REGION_LABELS.get(rid, rid)

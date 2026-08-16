@@ -55,3 +55,25 @@ export async function checkHealth() {
   const response = await fetch(`${BASE_URL}/health`);
   return response.ok;
 }
+
+/**
+ * Save a brush-corrected mask for one region — Module 2b
+ * @param {string} sessionId
+ * @param {string} regionId   — e.g. "main_wall"
+ * @param {string} maskB64    — base64 grayscale PNG (same dims as original image)
+ * @returns {Promise<object>} Updated region info + new overlay_image
+ */
+export async function updateMask(sessionId, regionId, maskB64) {
+  const response = await fetch(`${BASE_URL}/api/segment/${sessionId}/masks`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ region_id: regionId, mask_b64: maskB64 }),
+  });
+
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.detail || `Failed to save mask: ${response.status}`);
+  }
+
+  return response.json();
+}
