@@ -134,7 +134,7 @@ function SuccessPanel({ session, onProceedToSegment, isSegmenting }) {
       <div className={styles.cta}>
         <button
           id="proceed-to-segment-btn"
-          className={styles.proceedBtn}
+          className={styles.ctaBtn}
           onClick={onProceedToSegment}
           disabled={isSegmenting}
         >

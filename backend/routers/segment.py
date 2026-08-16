@@ -281,7 +281,7 @@ async def update_mask(session_id: str, req: PatchMaskRequest):
         raise HTTPException(status_code=404, detail=f"Session not found: {session_id}")
 
     session   = load_session(session_id)
-    seg_info  = session.get("segmentation")
+    seg_info  = session.get("segmentation_data")
     if not seg_info:
         raise HTTPException(
             status_code=400,

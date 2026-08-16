@@ -123,9 +123,9 @@ def create_pdf(session_id: str, session: dict) -> BytesIO:
         est_table_data = [["Region", "Material", "Qty", "Mat. Cost", "Labor Cost", "Total"]]
         
         for item in breakdown:
-            region = item.get("region", "").replace('_', ' ').title()
-            material = format_material_name(item.get("material", ""))
-            qty = f"{item.get('quantity_needed', 0):.1f} {item.get('unit', '')}"
+            region = item.get("region_name", "")
+            material = format_material_name(item.get("material_name", ""))
+            qty = f"{item.get('required_quantity', 0):.1f} {item.get('unit', '')}"
             m_cost = f"INR {item.get('material_cost', 0):.0f}"
             l_cost = f"INR {item.get('labor_cost', 0):.0f}"
             t_cost = f"INR {item.get('total_cost', 0):.0f}"
